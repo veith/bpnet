@@ -23,6 +23,20 @@ func (p Process) Start(Owner string, flowID string, data map[string]interface{})
 
 // Fire
 func (f *Flow) Fire(transitionIndex int) error {
+	err := f.fire(transitionIndex)
+	if err == nil {
+
+		f.AvailableUserTransitions = f.bpnTransitionsCheck();
+		if f.Process.PostFire != nil {
+			f.Process.PostFire(AUTO, f, transitionIndex)
+		}
+		return nil
+	}
+	return err
+}
+
+// fire
+func (f *Flow) fire(transitionIndex int) error {
 	err := f.Net.Fire(transitionIndex)
 	if err == nil {
 		f.AvailableUserTransitions = f.bpnTransitionsCheck();
@@ -30,7 +44,7 @@ func (f *Flow) Fire(transitionIndex int) error {
 	}
 	return err
 }
-var triggerHandler TriggerHandler
+
 
 func (f *Flow) bpnTransitionsCheck() []int {
 	//
@@ -39,16 +53,16 @@ func (f *Flow) bpnTransitionsCheck() []int {
 	for f.hasEnabledAutofireing(f.Net.EnabledTransitions) {
 		for _, transition := range f.Net.EnabledTransitions {
 			// auf alle autofire typen pruefen
-			if f.Process.TransitionTypes[transition]&(int(AUTO)) == int(AUTO) {
+			if f.Process.TransitionTypes[transition] == int(AUTO) {
 				//autofire
-				f.Fire(transition)
+				f.fire(transition)
 				break
 			}
-			if f.Process.TransitionTypes[transition]&(int(MESSAGE)) == int(MESSAGE) {
+			if f.Process.TransitionTypes[transition] == int(MESSAGE) {
 				// send message via extHandler, continue on true
-				
-				if triggerHandler.Trigger(MESSAGE,f,transition) {
-					f.Fire(transition)
+
+				if f.Process.SystemTrigger(MESSAGE, f, transition) {
+					f.fire(transition)
 				}
 				break
 			}
@@ -58,16 +72,16 @@ func (f *Flow) bpnTransitionsCheck() []int {
 	for _, transition := range f.Net.EnabledTransitions {
 
 		// alle noch nicht benachrichtigten timer prüfen
-		if f.Process.TransitionTypes[transition]&(int(TIMED)) == int(TIMED) && !itemAlreadyNotified(transition, f.TransitionsInProgress) {
+		if f.Process.TransitionTypes[transition] == int(TIMED) && !itemAlreadyNotified(transition, f.TransitionsInProgress) {
 			//f.Process.Transitions[transition].Delay
-			if triggerHandler.Trigger(TIMED,f,transition) {
+			if f.Process.SystemTrigger(TIMED, f, transition) {
 				f.TransitionsInProgress = append(f.TransitionsInProgress, transition)
 			}
 
 		}
 		// alle noch nicht gestarteten subprocesse
-		if f.Process.TransitionTypes[transition]&(int(SUBPROCESS)) == int(SUBPROCESS) && !itemAlreadyNotified(transition, f.TransitionsInProgress) {
-			if triggerHandler.Trigger(SUBPROCESS,f,transition) {
+		if f.Process.TransitionTypes[transition]  == int(SUBPROCESS) && !itemAlreadyNotified(transition, f.TransitionsInProgress) {
+			if f.Process.SystemTrigger(SUBPROCESS, f, transition) {
 				f.TransitionsInProgress = append(f.TransitionsInProgress, transition)
 			}
 
@@ -75,8 +89,6 @@ func (f *Flow) bpnTransitionsCheck() []int {
 	}
 	return f.Net.EnabledTransitions
 }
-
-
 
 // prüfe ob ein Timer bereits angestossen wurde.
 func itemAlreadyNotified(t int, list []int) bool {
@@ -126,11 +138,6 @@ func (t *TaskType) trigger() {
 	// je nach typ sollte ein TriggerHandler zünden
 }
 
-// interface um bei autofire zu zünden
-type TriggerHandler interface {
-	Trigger(taskType TaskType, flow *Flow, transitionIndex int) bool
-}
-
 type Flow struct {
 	ID                       string   `json:"id"`                // flow id
 	ProcessName              string   `json:"process"`           // Network Name
@@ -149,12 +156,17 @@ type Process struct {
 	InputMatrix     [][]int      `json:"-"`           // Input Matrix
 	OutputMatrix    [][]int      `json:"-"`           // Output Matrix
 	ConditionMatrix [][]string   `json:"-"`           // Condition Matrix
-	TransitionTypes  []int        `json:"-"`           // Transition Types
+	TransitionTypes []int        `json:"-"`           // Transition Types
 	InitialState    []int        `json:"-"`           // Initial State
 	Transitions     []Transition `json:"transitions"` // detailangaben zur transition
 	Variables       [] Variable  `json:"variables"`
 	StartVariables  []string     `json:"startvariables"`
+	SystemTrigger   Trigger //system trigger handle
+	PostFire        Trigger //post fire hood handle
 }
+
+// interface um bei autofire zu zünden
+type Trigger func(taskType TaskType, flow *Flow, transitionIndex int) bool
 
 // eine Transition
 type Transition struct {

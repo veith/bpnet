@@ -3,6 +3,8 @@ package bpnet_test
 import (
 	"testing"
 	"github.com/veith/bpnet"
+
+	"fmt"
 )
 
 var process bpnet.Process
@@ -31,8 +33,41 @@ func freshProcess() bpnet.Process {
 		InitialState:    []int{1, 0, 0, 0, 0, 0, 0, 0, 0},
 		TransitionTypes: []int{2, 1, 1, 1, 1, 1, 2},
 	}
+
+	process.SystemTrigger = triggerhandle
+	process.PostFire = triggerhandle
 	return process
 }
+
+func triggerhandle (taskType bpnet.TaskType, flow *bpnet.Flow, transitionIndex int) bool{
+fmt.Println("T",taskType)
+	return true
+}
+
+
+func TestProcess_Message(t *testing.T) {
+
+	//func (t *TriggerHandler) Trigger ()
+
+	process := freshProcess()
+
+	process.InitialState = []int{10, 0, 0, 0, 0, 0, 0, 0, 0}
+	process.TransitionTypes = []int{1, 3, 1, 1, 1, 1, 1}
+
+	var data map[string]interface{}
+	f := process.Start("veith", "xxxxx", data)
+
+	if f.Net.State[len(f.Net.State)-1] != 10 {
+		t.Error("Should have 10 transition in last place, is %s",  f.Net.State[len(f.Net.State)-1])
+	}
+}
+
+
+func TestProcess_Timed(t *testing.T) {
+t.Skip()
+
+}
+
 
 func TestProcess_Auto(t *testing.T) {
 	process := freshProcess()
