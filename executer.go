@@ -27,7 +27,6 @@ func (p Process) Start(Owner string, flowID string, data map[string]interface{})
 func (f *Flow) Fire(transitionIndex int) error {
 	err := f.fire(transitionIndex)
 	if err == nil {
-
 		f.AvailableUserTransitions = f.bpnTransitionsCheck();
 		if f.Process.OnFireCompleted != nil {
 			f.Process.OnFireCompleted(AUTO, f, transitionIndex)
@@ -37,7 +36,34 @@ func (f *Flow) Fire(transitionIndex int) error {
 	return err
 }
 
-// fire
+// Fire
+func (f *Flow) FireSytemTask(transitionIndex int) error {
+	var err error
+	if transitionRegistred(transitionIndex, f.TransitionsInProgress) {
+		err = f.fire(transitionIndex)
+		if err == nil {
+			f.AvailableUserTransitions = f.bpnTransitionsCheck();
+			f.AvailableSystemTransitions = removeFromIntValArray(f.AvailableSystemTransitions, transitionIndex)
+			if f.Process.OnFireCompleted != nil {
+				f.Process.OnFireCompleted(AUTO, f, transitionIndex)
+			}
+			return nil
+		}
+	}
+	return err
+}
+
+//Entfernt einen Wert aus einem int slice
+func removeFromIntValArray(l []int, item int) []int {
+	for i, other := range l {
+		if other == item {
+			return append(l[:i], l[i+1:]...)
+		}
+	}
+	return l
+}
+
+// fire ohne benachrichtigung nach aussen
 func (f *Flow) fire(transitionIndex int) error {
 	err := f.Net.Fire(transitionIndex)
 	if err == nil {
@@ -47,9 +73,8 @@ func (f *Flow) fire(transitionIndex int) error {
 	return err
 }
 
+// prüfen der Transitionen und auslösen der autofeuernden triggerpunkte
 func (f *Flow) bpnTransitionsCheck() []int {
-	//
-
 	// selbstfeuernde transitionen auslösen
 	for f.hasEnabledAutofireing(f.Net.EnabledTransitions) {
 		for _, transition := range f.Net.EnabledTransitions {
@@ -75,7 +100,7 @@ func (f *Flow) bpnTransitionsCheck() []int {
 		// timer trigger
 		// todo timer storage ermöglichen (eventuell über methode?, damit nicht Fire verwendet werden muss)
 		// alle noch nicht benachrichtigten timer prüfen
-		if f.Process.TransitionTypes[transition] == int(TIMED) && !itemAlreadyNotified(transition, f.TransitionsInProgress) {
+		if f.Process.TransitionTypes[transition] == int(TIMED) && !transitionRegistred(transition, f.TransitionsInProgress) {
 			f.TransitionsInProgress = append(f.TransitionsInProgress, transition)
 
 			if f.Process.OnTimerStarted != nil {
@@ -90,9 +115,16 @@ func (f *Flow) bpnTransitionsCheck() []int {
 			})
 
 		}
-		// alle noch nicht gestarteten subprocesse
-		if f.Process.TransitionTypes[transition] == int(SUBPROCESS) && !itemAlreadyNotified(transition, f.TransitionsInProgress) {
+		// alle noch nicht gestarteten subprocesses
+		if f.Process.TransitionTypes[transition] == int(SUBPROCESS) && !transitionRegistred(transition, f.TransitionsInProgress) {
 			if f.Process.SystemTrigger(SUBPROCESS, f, transition) {
+				f.TransitionsInProgress = append(f.TransitionsInProgress, transition)
+			}
+		}
+		// systemtask
+		if f.Process.TransitionTypes[transition] == int(SYSTEM) && !transitionRegistred(transition, f.TransitionsInProgress) {
+			f.AvailableSystemTransitions = append(f.AvailableSystemTransitions, transition)
+			if f.Process.SystemTrigger(SYSTEM, f, transition) {
 				f.TransitionsInProgress = append(f.TransitionsInProgress, transition)
 			}
 		}
@@ -100,11 +132,8 @@ func (f *Flow) bpnTransitionsCheck() []int {
 	return f.Net.EnabledTransitions
 }
 
-// timer trigger
-// todo timer storage einbauen
-
 // prüfe ob ein Timer bereits angestossen wurde.
-func itemAlreadyNotified(t int, list []int) bool {
+func transitionRegistred(t int, list []int) bool {
 	for _, v := range list {
 		if v == t {
 			return true
@@ -174,18 +203,18 @@ const (
 
 type TaskType int
 
-
 type Flow struct {
-	ID                       string   `json:"id"`                // flow id
-	ProcessName              string   `json:"process"`           // Network Name
-	ParentID                 string   `json:"parent_id"`         // flow id des parents
-	ParentTransition         int      `json:"parent_transition"` // die zu feuernde Transition des Parents bei ende des SubFlows
-	ActivatedSubFlows        []string `json:"sub_flows"`         // laufende subFlows um bei denen die möglichen Transitionen zu ermitteln (für hateoas)
-	Owner                    string   `json:"owner"`             // Owner
-	AvailableUserTransitions []int    `json:"usertasks"`         // enabled transitions von user tasks
-	TransitionsInProgress    []int    `json:"activated_timers"`  // enabled timers, ActivatedTimers, subflows,...
-	Net                      petrinet.Net                        // the running net
-	Process                  Process  `json:"process"`
+	ID                         string   `json:"id"`                // flow id
+	ProcessName                string   `json:"process"`           // Network Name
+	ParentID                   string   `json:"parent_id"`         // flow id des parents
+	ParentTransition           int      `json:"parent_transition"` // die zu feuernde Transition des Parents bei ende des SubFlows
+	ActivatedSubFlows          []string `json:"sub_flows"`         // laufende subFlows um bei denen die möglichen Transitionen zu ermitteln (für hateoas)
+	Owner                      string   `json:"owner"`             // Owner
+	AvailableUserTransitions   []int    `json:"usertasks"`         // enabled transitions von user tasks
+	AvailableSystemTransitions []int    `json:"systemtasks"`       // enabled transitions von user tasks
+	TransitionsInProgress      []int    `json:"in_progress"`       // enabled timers, ActivatedTimers, subflows,...
+	Net                        petrinet.Net                        // the running net
+	Process                    Process  `json:"process"`
 }
 
 type Process struct {
