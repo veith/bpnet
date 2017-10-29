@@ -2,6 +2,8 @@ package bpnet
 
 import (
 	"github.com/veith/petrinet"
+	"time"
+	"strconv"
 )
 
 // starte einen prozess
@@ -27,8 +29,8 @@ func (f *Flow) Fire(transitionIndex int) error {
 	if err == nil {
 
 		f.AvailableUserTransitions = f.bpnTransitionsCheck();
-		if f.Process.PostFire != nil {
-			f.Process.PostFire(AUTO, f, transitionIndex)
+		if f.Process.OnFireCompleted != nil {
+			f.Process.OnFireCompleted(AUTO, f, transitionIndex)
 		}
 		return nil
 	}
@@ -44,7 +46,6 @@ func (f *Flow) fire(transitionIndex int) error {
 	}
 	return err
 }
-
 
 func (f *Flow) bpnTransitionsCheck() []int {
 	//
@@ -71,24 +72,36 @@ func (f *Flow) bpnTransitionsCheck() []int {
 
 	for _, transition := range f.Net.EnabledTransitions {
 
+		// timer trigger
+		// todo timer storage ermöglichen (eventuell über methode?, damit nicht Fire verwendet werden muss)
 		// alle noch nicht benachrichtigten timer prüfen
 		if f.Process.TransitionTypes[transition] == int(TIMED) && !itemAlreadyNotified(transition, f.TransitionsInProgress) {
-			//f.Process.Transitions[transition].Delay
-			if f.Process.SystemTrigger(TIMED, f, transition) {
-				f.TransitionsInProgress = append(f.TransitionsInProgress, transition)
+			f.TransitionsInProgress = append(f.TransitionsInProgress, transition)
+
+			if f.Process.OnTimerStarted != nil {
+				f.Process.OnTimerStarted(TIMED, f, transition)
 			}
+			// verzögert auslösen
+			time.AfterFunc(parseDelay(f.Process.Transitions[transition].Details["delay"]), func() {
+				f.fire(transition)
+				if f.Process.OnTimerCompleted != nil {
+					f.Process.OnTimerCompleted(TIMED, f, transition)
+				}
+			})
 
 		}
 		// alle noch nicht gestarteten subprocesse
-		if f.Process.TransitionTypes[transition]  == int(SUBPROCESS) && !itemAlreadyNotified(transition, f.TransitionsInProgress) {
+		if f.Process.TransitionTypes[transition] == int(SUBPROCESS) && !itemAlreadyNotified(transition, f.TransitionsInProgress) {
 			if f.Process.SystemTrigger(SUBPROCESS, f, transition) {
 				f.TransitionsInProgress = append(f.TransitionsInProgress, transition)
 			}
-
 		}
 	}
 	return f.Net.EnabledTransitions
 }
+
+// timer trigger
+// todo timer storage einbauen
 
 // prüfe ob ein Timer bereits angestossen wurde.
 func itemAlreadyNotified(t int, list []int) bool {
@@ -104,15 +117,45 @@ func itemAlreadyNotified(t int, list []int) bool {
 func (f *Flow) hasEnabledAutofireing(enabledTransitions []int) bool {
 	for _, transition := range enabledTransitions {
 		// auf alle autofire pruefen
-		if f.Process.TransitionTypes[transition]&(int(AUTO)) == int(AUTO) {
+		if f.Process.TransitionTypes[transition] == int(AUTO) {
 			return true
 		}
 		// auf alle autofire pruefen
-		if f.Process.TransitionTypes[transition]&(int(MESSAGE)) == int(MESSAGE) {
+		if f.Process.TransitionTypes[transition] == int(MESSAGE) {
 			return true
 		}
 	}
 	return false
+}
+
+// momentan einfach nur sekunden, aber ist ausbaubar zu eow, eom, 1h,...
+func parseDelay(s interface{}) time.Duration {
+	var delay int
+	var err error
+
+	switch s.(type) {
+	case float64:
+		delay = int(s.(float64))
+	case int:
+		delay = s.(int)
+	case string:
+		delay, err = strconv.Atoi(s.(string))
+	}
+
+	if err == nil {
+		return time.Duration(max(1, delay)) * time.Second
+	} else {
+		return time.Duration(1) * time.Second
+	}
+}
+
+//  die eingebaute max kann nicht mit int umgehen :-(
+// max von zwei Int
+func max(a, b int) int {
+	if a < b {
+		return b
+	}
+	return a
 }
 
 // TaskTypen
@@ -131,12 +174,6 @@ const (
 
 type TaskType int
 
-func (t *TaskType) shouldLock() {
-	// je nach typ sollte die Transition locked sein
-}
-func (t *TaskType) trigger() {
-	// je nach typ sollte ein TriggerHandler zünden
-}
 
 type Flow struct {
 	ID                       string   `json:"id"`                // flow id
@@ -152,17 +189,19 @@ type Flow struct {
 }
 
 type Process struct {
-	Name            string       `json:"name"`        // Network Name
-	InputMatrix     [][]int      `json:"-"`           // Input Matrix
-	OutputMatrix    [][]int      `json:"-"`           // Output Matrix
-	ConditionMatrix [][]string   `json:"-"`           // Condition Matrix
-	TransitionTypes []int        `json:"-"`           // Transition Types
-	InitialState    []int        `json:"-"`           // Initial State
-	Transitions     []Transition `json:"transitions"` // detailangaben zur transition
-	Variables       [] Variable  `json:"variables"`
-	StartVariables  []string     `json:"startvariables"`
-	SystemTrigger   Trigger //system trigger handle
-	PostFire        Trigger //post fire hood handle
+	Name             string       `json:"name"`        // Network Name
+	InputMatrix      [][]int      `json:"-"`           // Input Matrix
+	OutputMatrix     [][]int      `json:"-"`           // Output Matrix
+	ConditionMatrix  [][]string   `json:"-"`           // Condition Matrix
+	TransitionTypes  []int        `json:"-"`           // Transition Types
+	InitialState     []int        `json:"-"`           // Initial State
+	Transitions      []Transition `json:"transitions"` // detailangaben zur transition
+	Variables        [] Variable  `json:"variables"`
+	StartVariables   []string     `json:"startvariables"`
+	SystemTrigger    Trigger //system trigger handle
+	OnFireCompleted  Trigger //post fire hook handle
+	OnTimerStarted   Trigger //timer hook handle
+	OnTimerCompleted Trigger //timer hook handle
 }
 
 // interface um bei autofire zu zünden

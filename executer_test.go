@@ -4,6 +4,8 @@ import (
 	"testing"
 	"github.com/veith/bpnet"
 
+
+	"time"
 	"fmt"
 )
 
@@ -35,7 +37,9 @@ func freshProcess() bpnet.Process {
 	}
 
 	process.SystemTrigger = triggerhandle
-	process.PostFire = triggerhandle
+	process.OnFireCompleted = triggerhandle
+	process.OnTimerStarted = triggerhandle
+	process.OnTimerCompleted = triggerhandle
 	return process
 }
 
@@ -64,8 +68,20 @@ func TestProcess_Message(t *testing.T) {
 
 
 func TestProcess_Timed(t *testing.T) {
-t.Skip()
+	process := freshProcess()
 
+	process.InitialState = []int{1, 0, 0, 0, 0, 0, 0, 0, 0}
+	process.TransitionTypes = []int{1, 4, 1, 1, 1, 1, 1}
+
+	process.Transitions = make([]bpnet.Transition, 5)
+    process.Transitions[1].Details = map[string]interface{}{"delay":2}
+
+    var data map[string]interface{}
+	f := process.Start("veith", "xxxxx", data)
+	time.Sleep(3 * time.Second)
+	if f.Net.State[len(f.Net.State)-1] != 1 {
+		t.Error("Should have 10 transition in last place, is %s",  f.Net.State[len(f.Net.State)-1])
+	}
 }
 
 
