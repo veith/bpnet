@@ -6,7 +6,6 @@ import (
 	"strconv"
 )
 
-// starte einen prozess
 func (p Process) Start(Owner string, flowID string, data map[string]interface{}) Flow {
 	//init
 	f := Flow{Owner: Owner, Process: p}
@@ -117,8 +116,18 @@ func (f *Flow) bpnTransitionsCheck() []int {
 		}
 		// alle noch nicht gestarteten subprocesses
 		if f.Process.TransitionTypes[transition] == int(SUBPROCESS) && !transitionRegistred(transition, f.TransitionsInProgress) {
-			if f.Process.SystemTrigger(SUBPROCESS, f, transition) {
+
+			// starte einen sub prozess
+			if f.Process.OnStartSubprocess(SUBPROCESS, f, transition) {
+				f.ActivatedSubFlows = append(f.ActivatedSubFlows, f.Process.Transitions[transition].Details["subprocess"].(string))
+				// subprozess laden
+				subprozess:= f.Process.SubProcessLoader(f.Process.Transitions[transition].Details["subprocess"].(string))
+				sf := subprozess.Start(f.Owner, "neu", f.Net.Variables)
+				sf.ParentID = f.ID
+				sf.ParentTransition = transition
+
 				f.TransitionsInProgress = append(f.TransitionsInProgress, transition)
+
 			}
 		}
 		// systemtask
@@ -218,23 +227,26 @@ type Flow struct {
 }
 
 type Process struct {
-	Name             string       `json:"name"`        // Network Name
-	InputMatrix      [][]int      `json:"-"`           // Input Matrix
-	OutputMatrix     [][]int      `json:"-"`           // Output Matrix
-	ConditionMatrix  [][]string   `json:"-"`           // Condition Matrix
-	TransitionTypes  []int        `json:"-"`           // Transition Types
-	InitialState     []int        `json:"-"`           // Initial State
-	Transitions      []Transition `json:"transitions"` // detailangaben zur transition
-	Variables        [] Variable  `json:"variables"`
-	StartVariables   []string     `json:"startvariables"`
-	SystemTrigger    Trigger //system trigger handle
-	OnFireCompleted  Trigger //post fire hook handle
-	OnTimerStarted   Trigger //timer hook handle
-	OnTimerCompleted Trigger //timer hook handle
+	Name              string       `json:"name"`        // Network Name
+	InputMatrix       [][]int      `json:"-"`           // Input Matrix
+	OutputMatrix      [][]int      `json:"-"`           // Output Matrix
+	ConditionMatrix   [][]string   `json:"-"`           // Condition Matrix
+	TransitionTypes   []int        `json:"-"`           // Transition Types
+	InitialState      []int        `json:"-"`           // Initial State
+	Transitions       []Transition `json:"transitions"` // detailangaben zur transition
+	Variables         [] Variable  `json:"variables"`
+	StartVariables    []string     `json:"startvariables"`
+	SystemTrigger     Trigger //system trigger handle
+	OnFireCompleted   Trigger //post fire hook handle
+	OnTimerStarted    Trigger //timer hook handle
+	OnTimerCompleted  Trigger //timer hook handle
+	OnStartSubprocess Trigger
+	SubProcessLoader  Subflowloader
 }
 
 // interface um bei autofire zu zünden
 type Trigger func(taskType TaskType, flow *Flow, transitionIndex int) bool
+type Subflowloader func(flowID string) Process
 
 // eine Transition
 type Transition struct {

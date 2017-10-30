@@ -39,6 +39,30 @@ func freshProcess() bpnet.Process {
 	process.OnFireCompleted = triggerhandle
 	process.OnTimerStarted = triggerhandle
 	process.OnTimerCompleted = triggerhandle
+	process.OnStartSubprocess = subflowtriggerhandle
+	process.SubProcessLoader = loadSubProcess
+	return process
+}
+func freshSubProcess() bpnet.Process {
+	process = bpnet.Process{
+		Name: "name",
+		InputMatrix: [][]int{
+			{1, 0, 0},
+			{0, 1, 0},
+		},
+		OutputMatrix: [][]int{
+			{0, 1, 0},
+			{0, 0, 1},
+		},
+		InitialState:    []int{1, 0, 0},
+		TransitionTypes: []int{1, 1, 1},
+	}
+
+	process.SystemTrigger = systemtriggerhandle
+	process.OnFireCompleted = triggerhandle
+	process.OnTimerStarted = triggerhandle
+	process.OnTimerCompleted = triggerhandle
+	process.OnStartSubprocess = subflowtriggerhandle
 	return process
 }
 
@@ -49,6 +73,36 @@ func triggerhandle(taskType bpnet.TaskType, flow *bpnet.Flow, transitionIndex in
 func systemtriggerhandle(taskType bpnet.TaskType, flow *bpnet.Flow, transitionIndex int) bool {
 	fmt.Println(flow.AvailableUserTransitions)
 	return true
+}
+
+func subflowtriggerhandle(taskType bpnet.TaskType,  flow *bpnet.Flow, transitionIndex int) bool {
+	// subflow starten
+  	fmt.Println(flow.AvailableUserTransitions)
+	return true
+}
+
+func loadSubProcess(flowID string) bpnet.Process{
+	return  freshSubProcess()
+}
+
+func TestProcess_Subflow(t *testing.T) {
+
+	//func (t *TriggerHandler) Trigger ()
+
+	process := freshProcess()
+
+	process.InitialState = []int{10, 0, 0, 0, 0, 0, 0, 0, 0}
+	process.TransitionTypes = []int{1, 5, 1, 1, 1, 1, 1}
+
+	process.Transitions = make([]bpnet.Transition, 7)
+	process.Transitions[1].Details = map[string]interface{}{"subprocess": "sub"}
+
+	var data map[string]interface{}
+	f := process.Start("veith", "xxxxx", data)
+
+	if f.Net.State[len(f.Net.State)-1] != 10 {
+		t.Error("Should have 10 transition in last place, is %s", f.Net.State[len(f.Net.State)-1])
+	}
 }
 
 func TestProcess_Message(t *testing.T) {
