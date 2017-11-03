@@ -16,10 +16,36 @@ func init() {
 	FlowCollection = map[ulid.ULID]*bpnet.Flow{}
 }
 
+
+func TestProcess_Subflow(t *testing.T) {
+
+	//func (t *TriggerHandler) Trigger ()
+
+	process := freshProcess()
+
+	process.InitialState = []int{3, 0, 0, 0, 0, 0, 0, 0, 0}
+	process.TransitionTypes = []int{1, 1, 1, 1, 5, 1, 1}
+
+	process.Transitions = make([]bpnet.Transition, 7)
+	process.Transitions[4].Details = map[string]interface{}{"subprocess": "sub"}
+
+	var data map[string]interface{}
+	f := process.CreateFlow("veith")
+
+	FlowCollection[f.ID] = f
+	f.Start(data)
+
+	if f.Net.State[len(f.Net.State)-1] != 3 {
+		t.Error("Should have 10 transition in last place, is %s", f.Net.State[len(f.Net.State)-1])
+	}
+}
+
+
+
 func TestProcess_System(t *testing.T) {
 	process := freshProcess()
 
-	process.InitialState = []int{1, 0, 0, 0, 0, 0, 0, 0, 0}
+	process.InitialState = []int{2, 0, 0, 0, 0, 0, 0, 0, 0}
 	process.TransitionTypes = []int{1, 6, 1, 1, 1, 1, 1}
 
 	process.Transitions = make([]bpnet.Transition, 7)
@@ -32,13 +58,14 @@ func TestProcess_System(t *testing.T) {
 		t.Error("Sollte eine erlaubte Systemtransition haben")
 	}
 	// tokenId
-	f.FireSystemTask(sysTaskToken) // sysTaskToken is set from SystemTaskHandler
+	f.FireSystemTask(sysTaskToken[0]) // sysTaskToken is set from SystemTaskHandler
+	f.FireSystemTask(sysTaskToken[1]) // sysTaskToken is set from SystemTaskHandler
 
 	if len(f.TransitionsInProgress) > 0 {
 		t.Error("Sollte keine erlaubte Systemtransition haben")
 	}
 
-	if f.Net.State[len(f.Net.State)-1] != 1 {
+	if f.Net.State[len(f.Net.State)-1] != 2 {
 		t.Error("Should have 1 transition in last place, is %s", f.Net.State[len(f.Net.State)-1])
 	}
 }
@@ -267,7 +294,10 @@ func freshProcess() bpnet.Process {
 	process.OnFireCompleted = fireCompleted
 	process.OnTimerStarted = triggerhandle
 	process.OnTimerCompleted = OnTimerCompleted
-	process.OnSubprocessStarted = subflowtriggerhandle
+	process.OnSubprocessCompleted = OnSubprocessCompleted
+	process.OnProcessStarted = OnProcessStarted
+	process.OnProcessCompleted = OnProcessCompleted
+	process.OnSubprocessStarted = OnSubprocessStarted
 	process.ProcessDefinitionLoader = loadSubProcess
 	process.FlowInstanceLoader = loadFlowInstance
 	return process
@@ -288,29 +318,34 @@ func freshSubProcess() bpnet.Process {
 	}
 
 	process.OnSystemTask = SystemTaskHandler
-	process.OnFireCompleted = fireCompleted
+	process.OnFireCompleted = SUBfireCompleted
 	process.OnTimerStarted = triggerhandle
 	process.OnTimerCompleted = OnTimerCompleted
-	process.OnSubprocessStarted = subflowtriggerhandle
-	process.OnSubprocessCompleted = subflowtriggerhandle
+	process.OnSubprocessStarted = OnSubprocessStarted
+	process.OnSubprocessCompleted = OnSubprocessCompleted
+	process.OnProcessStarted = OnProcessStarted
+	process.OnProcessCompleted = OnProcessCompleted
 	process.ProcessDefinitionLoader = loadSubProcess
 	process.FlowInstanceLoader = loadFlowInstance
 	return process
 }
 
-func loadSubProcess(processID string) *bpnet.Process {
+func loadSubProcess(processID string) (*bpnet.Process, error) {
 	p := freshSubProcess()
-	return &p
+	return &p, nil
 }
 
-func loadFlowInstance(flowID ulid.ULID) *bpnet.Flow {
+func loadFlowInstance(flowID ulid.ULID) (*bpnet.Flow, error) {
 	f := FlowCollection[flowID]
-
-	return f
+	return f, nil
 }
 
 func fireCompleted(flow *bpnet.Flow, transitionIndex int) bool {
 	//fmt.Println(transitionIndex)
+	return true
+}
+func SUBfireCompleted(flow *bpnet.Flow, transitionIndex int) bool {
+	fmt.Println(transitionIndex)
 	return true
 }
 func OnTimerCompleted(flow *bpnet.Flow, transitionIndex int) bool {
@@ -321,15 +356,31 @@ func triggerhandle(flow *bpnet.Flow, transitionIndex int) bool {
 	fmt.Println("T")
 	return true
 }
-var sysTaskToken int // wird vom Test verwendet
+var sysTaskToken []int // wird vom Test verwendet
 func SystemTaskHandler(flow *bpnet.Flow, tokenID int) bool {
-	sysTaskToken = tokenID
+	sysTaskToken = append(sysTaskToken,tokenID)
 	return true
 }
 
-func subflowtriggerhandle(flow *bpnet.Flow, transitionIndex int) bool {
+func OnSubprocessStarted(flow *bpnet.Flow, tokenID int) bool {
 	// subflow starten
-	fmt.Println(flow.AvailableUserTransitions)
+	fmt.Println("start subprocess",tokenID)
+	return true
+}
+
+func OnSubprocessCompleted(flow *bpnet.Flow, tokenID int) bool {
+	// subflow starten
+	fmt.Println("completed subprocess",flow.ID, tokenID)
+	return true
+}
+func OnProcessStarted(flow *bpnet.Flow, tokenID int) bool {
+	// subflow starten
+	fmt.Println("START process",flow.ID, tokenID)
+	return true
+}
+func OnProcessCompleted(flow *bpnet.Flow, tokenID int) bool {
+	// subflow starten
+	fmt.Println("COMPLETE process",flow.ID, tokenID)
 	return true
 }
 

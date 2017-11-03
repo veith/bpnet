@@ -23,6 +23,14 @@ func (p Process) CreateFlow(Owner string) *Flow {
 
 func (flow *Flow) Start(data map[string]interface{}) {
 	//init
+	if flow.Process.OnSubprocessStarted != nil && flow.ParentTransitionTokenID != 0 {
+		flow.Process.OnSubprocessStarted(flow, flow.ParentTransitionTokenID)
+	} else {
+		if flow.Process.OnProcessStarted != nil {
+			flow.Process.OnProcessStarted(flow, 0)
+		}
+	}
+
 	flow.Net.Variables = data
 	flow.AvailableUserTransitions = flow.bpnTransitionsCheck();
 }
@@ -40,24 +48,6 @@ func (f *Flow) Fire(transitionIndex int) error {
 	return err
 }
 
-/*
-func (f *Flow) FireSytemTask(transitionIndex int) error {
-	var err error
-	if transitionRegistred(transitionIndex, f.TransitionsInProgress) {
-		err = f.fire(transitionIndex)
-		if err == nil {
-			f.AvailableUserTransitions = f.bpnTransitionsCheck();
-			f.AvailableSystemTransitions = removeFromIntValArray(f.AvailableSystemTransitions, transitionIndex)
-			if f.Process.OnFireCompleted != nil {
-				f.Process.OnFireCompleted(f, transitionIndex)
-			}
-			return nil
-		}
-	}
-	return err
-}
-*/
-
 //Entfernt einen Wert aus einem int slice
 func removeFromIntValArray(l []int, item int) []int {
 	for i, other := range l {
@@ -66,6 +56,32 @@ func removeFromIntValArray(l []int, item int) []int {
 		}
 	}
 	return l
+}
+
+func (f *Flow) checkCompleted() bool {
+	if len(f.Net.EnabledTransitions) == 0 {
+
+		if f.ParentTransitionTokenID != 0 {
+
+			// fire parent token
+
+			if f.Process.OnSubprocessCompleted != nil {
+				f.Process.OnSubprocessCompleted(f, f.ParentTransitionTokenID)
+			}
+
+			parentFlow, err := f.Process.FlowInstanceLoader(f.ParentID)
+			if err == nil {
+				parentFlow.fireFromSubProccess(f.ParentTransitionTokenID)
+			}
+
+		} else {
+			if f.Process.OnProcessCompleted != nil {
+				f.Process.OnProcessCompleted(f, 0)
+			}
+		}
+		return true
+	}
+	return false
 }
 
 // fire ohne benachrichtigung nach aussen
@@ -85,13 +101,12 @@ func (f *Flow) FireSystemTask(tokenID int) error {
 // fire ohne benachrichtigung nach aussen
 func (f *Flow) fireWithTokenId(tokenID int) error {
 
-
-
 	transition := f.TransitionsInProgress[tokenID]
 
 	err := f.Net.FireWithTokenId(transition, tokenID)
 
 	delete(f.TransitionsInProgress, tokenID)
+
 	if err == nil {
 		f.AvailableUserTransitions = f.bpnTransitionsCheck();
 		return nil
@@ -100,8 +115,25 @@ func (f *Flow) fireWithTokenId(tokenID int) error {
 	return err
 }
 
+// fire ohne benachrichtigung nach aussen
+func (f *Flow) fireFromSubProccess(tokenID int) error {
+
+	transition := f.TransitionsInProgress[tokenID]
+
+	err := f.Net.FireWithTokenId(transition, tokenID)
+
+	delete(f.TransitionsInProgress, tokenID)
+
+	if err == nil {
+		return nil
+	}
+
+	return err
+}
+
 // prüfen der Transitionen und auslösen der autofeuernden triggerpunkte
 func (f *Flow) bpnTransitionsCheck() []int {
+	f.checkCompleted()
 	// selbstfeuernde transitionen auslösen
 	for f.hasEnabledAutofireing(f.Net.EnabledTransitions) {
 		for _, transition := range f.Net.EnabledTransitions {
@@ -128,22 +160,39 @@ func (f *Flow) bpnTransitionsCheck() []int {
 			if (val > 0) {
 				for _, tokenID := range f.Net.TokenIds[place] {
 					// alle noch nicht benachrichtigten timer prüfen
-					if f.Process.TransitionTypes[transition] == int(TIMED) && !f.transitionRegistred(tokenID) {
+					if f.Process.TransitionTypes[transition] == int(TIMED) && !f.tokenRegistred(tokenID) {
 						f.TransitionsInProgress[tokenID] = transition
 						executeTimer(f, transition, tokenID)
 					}
 
 					// systemtask
-					if f.Process.TransitionTypes[transition] == int(SYSTEM) && !f.transitionRegistred(tokenID) {
+					if f.Process.TransitionTypes[transition] == int(SYSTEM) && !f.tokenRegistred(tokenID) {
 						if f.Process.OnSystemTask(f, tokenID) {
 							f.TransitionsInProgress[tokenID] = transition
 						}
+					}
+
+					// subprocess
+					if f.Process.TransitionTypes[transition] == int(SUBPROCESS) && !f.tokenRegistred(tokenID) {
+
+						f.TransitionsInProgress[tokenID] = transition
+						// sub erstellen und starten
+						subprocess, err := f.Process.ProcessDefinitionLoader(f.Process.Transitions[transition].Details["subprocess"].(string))
+
+						if err == nil {
+							subflow := subprocess.CreateFlow(f.Owner)
+							subflow.ParentID = f.ID
+							subflow.ParentTransitionTokenID = tokenID
+							f.RunningSubProcesses = append(f.RunningSubProcesses, subflow.ID)
+
+							subflow.Start(f.Net.Variables)
+						}
+
 					}
 				}
 			}
 
 		}
-
 
 	}
 
@@ -157,18 +206,18 @@ func executeTimer(f *Flow, transition int, tokenID int) {
 
 	// verzögert auslösen
 
-	 time.AfterFunc(parseDelay(f.Process.Transitions[transition].Details["delay"]), func() {
-		if f.transitionRegistred(tokenID) {
- 			f.fireWithTokenId(tokenID)
- 			if f.Process.OnTimerCompleted != nil {
+	time.AfterFunc(parseDelay(f.Process.Transitions[transition].Details["delay"]), func() {
+		if f.tokenRegistred(tokenID) {
+			f.fireWithTokenId(tokenID)
+			if f.Process.OnTimerCompleted != nil {
 				f.Process.OnTimerCompleted(f, transition)
 			}
 		}
-	 })
+	})
 }
 
 // prüfe ob ein Timer bereits angestossen wurde.
-func (f *Flow) transitionRegistred(tokenID int) bool {
+func (f *Flow) tokenRegistred(tokenID int) bool {
 	if _, ok := f.TransitionsInProgress[tokenID]; ok {
 		//do something here
 		return true
@@ -244,39 +293,39 @@ const (
 
 type TaskType int
 type Flow struct {
-	ID                         ulid.ULID   `json:"id"`                // flow id
-	ProcessName                string      `json:"process"`           // Network Name
-	ParentID                   ulid.ULID   `json:"parent_id"`         // flow id des parents
-	ParentTransition           int         `json:"parent_transition"` // die zu feuernde Transition des Parents bei ende des SubFlows
-	IsSubflow                  bool
-	ActivatedSubFlows          []string    `json:"sub_flows"`   // laufende subFlows um bei denen die möglichen Transitionen zu ermitteln (für hateoas)
-	Owner                      string      `json:"owner"`       // Owner
-	AvailableUserTransitions   []int       `json:"usertasks"`   // enabled transitions von user tasks
-	AvailableSystemTransitions []int       `json:"systemtasks"` // enabled transitions von user tasks
-	TransitionsInProgress      map[int]int `json:"in_progress"` // [tokenID]transition enabled timers, ActivatedTimers, subflows,...
-	Net                        petrinet.Net                     // the running net
-	Process                    Process     `json:"process"`
+	ID                       ulid.ULID   `json:"id"`                // flow id
+	ProcessName              string      `json:"process"`           // Network Name
+	ParentID                 ulid.ULID   `json:"parent_id"`         // flow id des parents
+	ParentTransitionTokenID  int         `json:"parent_transition"` // die zu feuernde Transition des Parents bei ende des SubFlows
+	IsSubflow                bool
+	ActivatedSubFlows        []string    `json:"sub_flows"`   // laufende subFlows um bei denen die möglichen Transitionen zu ermitteln (für hateoas)
+	Owner                    string      `json:"owner"`       // Owner
+	AvailableUserTransitions []int       `json:"usertasks"`   // enabled transitions von user tasks
+	TransitionsInProgress    map[int]int `json:"in_progress"` // [tokenID]transition enabled timers, ActivatedTimers, subflows,...
+	Net                      petrinet.Net                     // the running net
+	Process                  Process     `json:"process"`
+	RunningSubProcesses      []ulid.ULID `json:"running_sub_processes"`
 }
 
 type Process struct {
 	Name                    string       `json:"name"`        // Network Name
 	InputMatrix             [][]int      `json:"-"`           // Input Matrix
-	OutputMatrix        [][]int      `json:"-"`           // Output Matrix
-	ConditionMatrix     [][]string   `json:"-"`           // Condition Matrix
-	TransitionTypes     []int        `json:"-"`           // Transition Types
-	InitialState        []int        `json:"-"`           // Initial State
-	Transitions         []Transition `json:"transitions"` // detailangaben zur transition
-	Variables           [] Variable  `json:"variables"`
-	StartVariables      []string     `json:"startvariables"`
-	OnSystemTask        SystemTask //system task handle TODO: https://siadat.github.io/post/context
-	OnFireCompleted     Notify     // nach jedem erfolgreichen Fire
-	OnTimerStarted      Notify     //timer hook handle
-	OnTimerCompleted    Notify     //timer hook handle
-	OnSendMessage       Notify     // message send handler
-	OnFlowCreated       Notify     // process started hook, after autofireing hooks
-	OnProcessStarted    Notify     // process started hook, after autofireing hooks
-	OnProcessCompleted  Notify     // process finished
-	OnSubprocessStarted Notify
+	OutputMatrix            [][]int      `json:"-"`           // Output Matrix
+	ConditionMatrix         [][]string   `json:"-"`           // Condition Matrix
+	TransitionTypes         []int        `json:"-"`           // Transition Types
+	InitialState            []int        `json:"-"`           // Initial State
+	Transitions             []Transition `json:"transitions"` // detailangaben zur transition
+	Variables               [] Variable  `json:"variables"`
+	StartVariables          []string     `json:"startvariables"`
+	OnSystemTask            SystemTask //system task handle TODO: https://siadat.github.io/post/context
+	OnFireCompleted         Notify     // nach jedem erfolgreichen Fire
+	OnTimerStarted          Notify     //timer hook handle
+	OnTimerCompleted        Notify     //timer hook handle
+	OnSendMessage           Notify     // message send handler
+	OnFlowCreated           Notify     // process started hook, after autofireing hooks
+	OnProcessStarted        Notify     // process started hook, after autofireing hooks
+	OnProcessCompleted      Notify     // process finished
+	OnSubprocessStarted     Notify
 	OnSubprocessCompleted   Notify
 	FlowInstanceLoader      FlowInstanceLoader      // prozessinstanzen um parent prozesse oder subprozesse zu referenzieren
 	ProcessDefinitionLoader ProcessDefinitionLoader // prozessdefinitionen um subprozesse zu starten
@@ -286,8 +335,8 @@ type Process struct {
 
 type Notify func(flow *Flow, transitionIndex int) bool
 type SystemTask func(flow *Flow, tokenID int) bool
-type ProcessDefinitionLoader func(processName string) *Process
-type FlowInstanceLoader func(flowID ulid.ULID) *Flow
+type ProcessDefinitionLoader func(processName string) (*Process, error)
+type FlowInstanceLoader func(flowID ulid.ULID) (*Flow, error)
 
 // eine Transition
 type Transition struct {
