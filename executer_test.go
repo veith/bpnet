@@ -16,6 +16,34 @@ func init() {
 	FlowCollection = map[ulid.ULID]*bpnet.Flow{}
 }
 
+func TestProcess_System(t *testing.T) {
+	process := freshProcess()
+
+	process.InitialState = []int{1, 0, 0, 0, 0, 0, 0, 0, 0}
+	process.TransitionTypes = []int{1, 6, 1, 1, 1, 1, 1}
+
+	process.Transitions = make([]bpnet.Transition, 7)
+	process.Transitions[1].Details = map[string]interface{}{"delay": 2}
+
+	var data map[string]interface{}
+	f := process.CreateFlow("veith")
+	f.Start(data)
+	if len(f.TransitionsInProgress) < 1 {
+		t.Error("Sollte eine erlaubte Systemtransition haben")
+	}
+	// tokenId
+	f.FireSystemTask(sysTaskToken) // sysTaskToken is set from SystemTaskHandler
+
+	if len(f.TransitionsInProgress) > 0 {
+		t.Error("Sollte keine erlaubte Systemtransition haben")
+	}
+
+	if f.Net.State[len(f.Net.State)-1] != 1 {
+		t.Error("Should have 1 transition in last place, is %s", f.Net.State[len(f.Net.State)-1])
+	}
+}
+
+
 func TestMessage(t *testing.T) {
 	process := freshProcess()
 	process.InputMatrix = [][]int{
@@ -235,7 +263,7 @@ func freshProcess() bpnet.Process {
 		TransitionTypes: []int{2, 1, 1, 1, 1, 1, 2},
 	}
 
-	process.SystemTrigger = systemtriggerhandle
+	process.OnSystemTask = SystemTaskHandler
 	process.OnFireCompleted = fireCompleted
 	process.OnTimerStarted = triggerhandle
 	process.OnTimerCompleted = OnTimerCompleted
@@ -259,7 +287,7 @@ func freshSubProcess() bpnet.Process {
 		TransitionTypes: []int{1, 1, 1},
 	}
 
-	process.SystemTrigger = systemtriggerhandle
+	process.OnSystemTask = SystemTaskHandler
 	process.OnFireCompleted = fireCompleted
 	process.OnTimerStarted = triggerhandle
 	process.OnTimerCompleted = OnTimerCompleted
@@ -293,8 +321,9 @@ func triggerhandle(flow *bpnet.Flow, transitionIndex int) bool {
 	fmt.Println("T")
 	return true
 }
-func systemtriggerhandle(flow *bpnet.Flow, transitionIndex int) bool {
-	fmt.Println(flow.AvailableUserTransitions)
+var sysTaskToken int // wird vom Test verwendet
+func SystemTaskHandler(flow *bpnet.Flow, tokenID int) bool {
+	sysTaskToken = tokenID
 	return true
 }
 

@@ -78,6 +78,10 @@ func (f *Flow) fire(transitionIndex int) error {
 	return err
 }
 
+func (f *Flow) FireSystemTask(tokenID int) error {
+	return f.fireWithTokenId(tokenID)
+}
+
 // fire ohne benachrichtigung nach aussen
 func (f *Flow) fireWithTokenId(tokenID int) error {
 
@@ -87,7 +91,7 @@ func (f *Flow) fireWithTokenId(tokenID int) error {
 
 	err := f.Net.FireWithTokenId(transition, tokenID)
 
-	//delete(f.TransitionsInProgress, tokenID)
+	delete(f.TransitionsInProgress, tokenID)
 	if err == nil {
 		f.AvailableUserTransitions = f.bpnTransitionsCheck();
 		return nil
@@ -128,18 +132,19 @@ func (f *Flow) bpnTransitionsCheck() []int {
 						f.TransitionsInProgress[tokenID] = transition
 						executeTimer(f, transition, tokenID)
 					}
+
+					// systemtask
+					if f.Process.TransitionTypes[transition] == int(SYSTEM) && !f.transitionRegistred(tokenID) {
+						if f.Process.OnSystemTask(f, tokenID) {
+							f.TransitionsInProgress[tokenID] = transition
+						}
+					}
 				}
 			}
 
 		}
 
-		/*/ systemtask
-		if f.Process.TransitionTypes[transition] == int(SYSTEM) && !transitionRegistred(transition, f.TransitionsInProgress) {
-			f.AvailableSystemTransitions = append(f.AvailableSystemTransitions, transition)
-			if f.Process.SystemTrigger(f, transition) {
-				f.TransitionsInProgress = append(f.TransitionsInProgress, transition)
-			}
-		}*/
+
 	}
 
 	return f.Net.EnabledTransitions
@@ -256,22 +261,22 @@ type Flow struct {
 type Process struct {
 	Name                    string       `json:"name"`        // Network Name
 	InputMatrix             [][]int      `json:"-"`           // Input Matrix
-	OutputMatrix            [][]int      `json:"-"`           // Output Matrix
-	ConditionMatrix         [][]string   `json:"-"`           // Condition Matrix
-	TransitionTypes         []int        `json:"-"`           // Transition Types
-	InitialState            []int        `json:"-"`           // Initial State
-	Transitions             []Transition `json:"transitions"` // detailangaben zur transition
-	Variables               [] Variable  `json:"variables"`
-	StartVariables          []string     `json:"startvariables"`
-	SystemTrigger           Notify //system trigger handle
-	OnFireCompleted         Notify // nach jedem erfolgreichen Fire
-	OnTimerStarted          Notify //timer hook handle
-	OnTimerCompleted        Notify //timer hook handle
-	OnSendMessage           Notify // message send handler
-	OnFlowCreated           Notify // process started hook, after autofireing hooks
-	OnProcessStarted        Notify // process started hook, after autofireing hooks
-	OnProcessCompleted      Notify // process finished
-	OnSubprocessStarted     Notify
+	OutputMatrix        [][]int      `json:"-"`           // Output Matrix
+	ConditionMatrix     [][]string   `json:"-"`           // Condition Matrix
+	TransitionTypes     []int        `json:"-"`           // Transition Types
+	InitialState        []int        `json:"-"`           // Initial State
+	Transitions         []Transition `json:"transitions"` // detailangaben zur transition
+	Variables           [] Variable  `json:"variables"`
+	StartVariables      []string     `json:"startvariables"`
+	OnSystemTask        SystemTask //system task handle TODO: https://siadat.github.io/post/context
+	OnFireCompleted     Notify     // nach jedem erfolgreichen Fire
+	OnTimerStarted      Notify     //timer hook handle
+	OnTimerCompleted    Notify     //timer hook handle
+	OnSendMessage       Notify     // message send handler
+	OnFlowCreated       Notify     // process started hook, after autofireing hooks
+	OnProcessStarted    Notify     // process started hook, after autofireing hooks
+	OnProcessCompleted  Notify     // process finished
+	OnSubprocessStarted Notify
 	OnSubprocessCompleted   Notify
 	FlowInstanceLoader      FlowInstanceLoader      // prozessinstanzen um parent prozesse oder subprozesse zu referenzieren
 	ProcessDefinitionLoader ProcessDefinitionLoader // prozessdefinitionen um subprozesse zu starten
@@ -280,6 +285,7 @@ type Process struct {
 // interface um bei autofire zu zünden
 
 type Notify func(flow *Flow, transitionIndex int) bool
+type SystemTask func(flow *Flow, tokenID int) bool
 type ProcessDefinitionLoader func(processName string) *Process
 type FlowInstanceLoader func(flowID ulid.ULID) *Flow
 
