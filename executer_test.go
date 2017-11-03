@@ -24,10 +24,11 @@ func TestProcess_Subflow(t *testing.T) {
 	process := freshProcess()
 
 	process.InitialState = []int{3, 0, 0, 0, 0, 0, 0, 0, 0}
-	process.TransitionTypes = []int{1, 1, 1, 1, 5, 1, 1}
+	process.TransitionTypes = []int{1, 5, 1, 1, 5, 1, 1}
 
 	process.Transitions = make([]bpnet.Transition, 7)
 	process.Transitions[4].Details = map[string]interface{}{"subprocess": "sub"}
+	process.Transitions[1].Details = map[string]interface{}{"subprocess": "sub"}
 
 	var data map[string]interface{}
 	f := process.CreateFlow("veith")
@@ -314,7 +315,7 @@ func freshSubProcess() bpnet.Process {
 			{0, 0, 1},
 		},
 		InitialState:    []int{1, 0, 0},
-		TransitionTypes: []int{1, 1, 1},
+		TransitionTypes: []int{1, 3, 1},
 	}
 
 	process.OnSystemTask = SystemTaskHandler
@@ -327,6 +328,11 @@ func freshSubProcess() bpnet.Process {
 	process.OnProcessCompleted = OnProcessCompleted
 	process.ProcessDefinitionLoader = loadSubProcess
 	process.FlowInstanceLoader = loadFlowInstance
+	process.OnSendMessage = sendMessage
+
+	process.Transitions = make([]bpnet.Transition, 3)
+	process.Transitions[1].Details = map[string]interface{}{"broker": "sms"}
+
 	return process
 }
 
