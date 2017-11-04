@@ -78,7 +78,7 @@ func TestMakeProcessFromYaml(t *testing.T) {
 	flow.Start(d)
 
 	flow.Fire(0,d)
-	time.Sleep(200 * time.Millisecond) // inner delay
+	time.Sleep(900 * time.Millisecond) // inner delay
 
 	if flow.Net.State[3] != 1 {
 		t.Error("process muss komplett durchlaufen", flow.Net.State)

@@ -5,9 +5,8 @@ import (
 	"time"
 	"github.com/oklog/ulid"
 	"math/rand"
-
 	"errors"
-)
+ )
 
 // Creates a flow (process instance) from a process
 func (p Process) CreateFlow(Owner string) *Flow {
@@ -122,7 +121,6 @@ func (f *Flow) Fire(transitionIndex int, data map[string]interface{}) error {
 // checks and notify completion of process and sub process
 func (f *Flow) checkCompleted() bool {
 	if len(f.Net.EnabledTransitions) == 0 {
-
 		if f.ParentTransitionTokenID != 0 {
 
 			// fire parent token
@@ -133,6 +131,7 @@ func (f *Flow) checkCompleted() bool {
 
 			parentFlow, err := f.Process.FlowInstanceLoader(f.ParentID)
 			if err == nil {
+
 				parentFlow.FireSystemTask(f.ParentTransitionTokenID, f.Net.Variables)
 			}
 
@@ -270,11 +269,14 @@ func executeTimer(f *Flow, transition int, tokenID int) {
 	time.AfterFunc(parseDelay(f.Process.Transitions[transition].Details["delay"]), func() {
 		if f.tokenRegistred(tokenID) {
 			//f.fireWithTokenId(tokenID)
-			f.Net.FireWithTokenId(transition, tokenID)
+			err := f.Net.FireWithTokenId(transition, tokenID)
+
 			if f.Process.OnTimerCompleted != nil {
 				f.Process.OnTimerCompleted(f, transition)
 			}
-			f.AvailableUserTransitions = f.bpnTransitionsCheck()
+			if err == nil{
+				f.AvailableUserTransitions = f.bpnTransitionsCheck()
+			}
 			delete(f.TransitionsInProgress, tokenID)
 		}
 	})
@@ -358,12 +360,11 @@ type Flow struct {
 	ProcessName              string      `json:"process"`           // Network Name
 	ParentID                 ulid.ULID   `json:"parent_id"`         // flow id des parents
 	ParentTransitionTokenID  int         `json:"parent_transition"` // die zu feuernde Transition des Parents bei ende des SubFlows
-	IsSubflow                bool
-	ActivatedSubFlows        []string    `json:"sub_flows"`   // laufende subFlows um bei denen die möglichen Transitionen zu ermitteln (für hateoas)
-	Owner                    string      `json:"owner"`       // Owner
-	AvailableUserTransitions []int       `json:"usertasks"`   // enabled transitions von user tasks
-	TransitionsInProgress    map[int]int `json:"in_progress"` // [tokenID]transition enabled timers, ActivatedTimers, subflows,...
-	Net                      petrinet.Net                     // the running net
+	ActivatedSubFlows        []string    `json:"sub_flows"`         // laufende subFlows um bei denen die möglichen Transitionen zu ermitteln (für hateoas)
+	Owner                    string      `json:"owner"`             // Owner
+	AvailableUserTransitions []int       `json:"usertasks"`         // enabled transitions von user tasks
+	TransitionsInProgress    map[int]int `json:"in_progress"`       // [tokenID]transition enabled timers, ActivatedTimers, subflows,...
+	Net                      petrinet.Net                           // the running net
 	Process                  Process     `json:"process"`
 	RunningSubProcesses      []ulid.ULID `json:"running_sub_processes"`
 }
