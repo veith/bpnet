@@ -1,0 +1,87 @@
+title: proc.sample
+transitions:
+  - id: user
+    type: user
+    details:
+      host: messagewriter.partner.base
+      path-template: /
+    variables:
+     - message
+
+  - id: delay
+    type: timed
+    details:
+      delay: 1
+
+  - id: slack
+    type: user
+    details:
+      process: subprocess.sample
+
+  - id: log
+    type: message
+    details:
+      broker: logger
+      xwas: hier eingeben
+
+
+variables:
+  - id: counts
+    type: int
+  - id: message
+    type: string
+
+
+startvariables:
+  - counts
+
+places:
+  - id: start
+    label: start
+    tokens: 1
+
+  - id: weiche
+    label: weiche vor delay und slack
+
+  - id: prelog
+    label: prelog
+
+  - id: end
+    label: end
+
+
+arcs:
+  - sourceId: start
+    destinationId: write
+    type: pt
+    weight: 1
+
+  - sourceId: write
+    destinationId: weiche
+    type: tp
+
+
+  - sourceId: weiche
+    destinationId: delay
+    type: pt
+
+  - sourceId: delay
+    destinationId: prelog
+    type: tp
+
+  - sourceId: weiche
+    destinationId: slack
+    type: pt
+    condition: counts > 5
+
+  - sourceId: slack
+    destinationId: prelog
+    type: tp
+
+  - sourceId: prelog
+    destinationId: log
+    type: pt
+
+  - sourceId: log
+    destinationId: end
+    type: tp

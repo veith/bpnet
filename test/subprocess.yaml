@@ -1,0 +1,39 @@
+title: subprocess.sample
+transitions:
+  - id: slack
+    type: message
+    details:
+      broker: slack
+      token: LLFDSD
+      channel: x34s
+
+
+variables:
+  - id: message
+    type: string
+    transition:
+
+
+startvariables:
+  - message
+
+
+places:
+  - id: start
+    label: start
+    tokens: 1
+
+  - id: end
+    label: end
+
+
+arcs:
+  - sourceId: start
+    destinationId: slack
+    type: pt
+    weight: 1
+
+  - sourceId: slack
+    destinationId: end
+    type: tp
+    weight: 1
