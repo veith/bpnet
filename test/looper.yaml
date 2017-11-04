@@ -1,0 +1,56 @@
+title: looper.sample
+transitions:
+  - id: slack
+    type: message
+    details:
+      broker: messagerbrokerfromsubprocess
+      token: LLFDSD
+      channel: x34s
+
+  - id: system
+    type: system
+    details:
+      api: 1234
+
+variables:
+  - id: counts
+    type: int
+  - id: message
+    type: string
+
+startvariables:
+  - counts
+
+places:
+  - id: start
+    label: start
+    tokens: 1
+
+  - id: p1
+    label: p2
+
+
+  - id: end
+    label: end
+
+
+arcs:
+  - sourceId: start
+    destinationId: slack
+    type: pt
+    weight: 1
+
+  - sourceId: slack
+    destinationId: p1
+    type: tp
+    weight: 1
+
+  - sourceId: p1
+    destinationId: system
+    type: pt
+    weight: 1
+
+  - sourceId: system
+    destinationId: end
+    type: tp
+    weight: 1

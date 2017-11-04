@@ -6,6 +6,7 @@ import (
 	"github.com/oklog/ulid"
 	"math/rand"
 
+	"errors"
 )
 
 // Creates a flow (process instance) from a process
@@ -16,9 +17,8 @@ func (p Process) CreateFlow(Owner string) *Flow {
 	flow.Net.OutputMatrix = p.OutputMatrix
 	flow.Net.State = make([]int, len(p.InitialState))
 	copy(flow.Net.State, p.InitialState)
-	flow.Net.ConditionMatrix = make([][]string , len(p.ConditionMatrix))
+	flow.Net.ConditionMatrix = make([][]string, len(p.ConditionMatrix))
 	copy(flow.Net.ConditionMatrix, p.ConditionMatrix)
-
 
 	flow.TransitionsInProgress = make(map[int]int)
 	return &flow
@@ -30,7 +30,7 @@ func (flow *Flow) ReadData() map[string]interface{} {
 }
 
 // starts the flow with initial data
-func (flow *Flow) Start(data map[string]interface{}) {
+func (flow *Flow) Start(data map[string]interface{}) error {
 	//init
 	if flow.Process.OnSubProcessStarted != nil && flow.ParentTransitionTokenID != 0 {
 		flow.Process.OnSubProcessStarted(flow, flow.ParentTransitionTokenID)
@@ -39,24 +39,84 @@ func (flow *Flow) Start(data map[string]interface{}) {
 			flow.Process.OnProcessStarted(flow, 0)
 		}
 	}
+	flow.Net.Variables = make(map[string]interface{})
 
-	//TODO: @veith filter data, check for required fields
-	flow.Net.Variables = data
-	flow.Net.Init()
-	flow.AvailableUserTransitions = flow.bpnTransitionsCheck();
+	err := flow.appendData(data, "___start")
+	if err.len() == 0 {
+		flow.Net.Init()
+		flow.AvailableUserTransitions = flow.bpnTransitionsCheck();
+	}
+	return err
+}
+
+type RequiredError struct {
+	Fields []string
+	error
+}
+
+func (e *RequiredError) len() int {
+	return len(e.Fields)
+}
+
+// // prüfe ob alle in der Transition VERLANGTEN Daten gesendet wurden
+func (flow *Flow) appendData(data map[string]interface{}, transitionID string) RequiredError {
+
+	// filter undefined fields
+	for _, v := range flow.Process.Variables {
+		if val, ok := data[v.ID]; ok {
+			flow.Net.Variables[v.ID] = val
+		}
+	}
+
+	// check for required fields
+	var requiredError RequiredError
+	if transitionID == "___start" {
+		for _, required := range flow.Process.StartVariables {
+			if _, ok := data[required]; !ok {
+				requiredError.error = errors.New("required variables for start not sent")
+				requiredError.Fields = append(requiredError.Fields, required)
+			}
+		}
+	} else {
+		// bei transitionen
+		for _, transition := range flow.Process.Transitions {
+			// build map
+			// nur für aktuell gewählte transition prüfen
+			if transition.ID == transitionID {
+				for _, required := range transition.ReqVariables {
+					if _, ok := data[required]; !ok {
+						requiredError.error = errors.New("required variables for start not sent")
+						requiredError.Fields = append(requiredError.Fields, required)
+					}
+				}
+			}
+		}
+	}
+
+	return requiredError
+
 }
 
 // Fire a transition / task
-func (f *Flow) Fire(transitionIndex int) error {
-	err := f.fire(transitionIndex)
-	if err == nil {
-		f.AvailableUserTransitions = f.bpnTransitionsCheck();
-		if f.Process.OnFireCompleted != nil {
-			f.Process.OnFireCompleted(f, transitionIndex)
+func (f *Flow) Fire(transitionIndex int, data map[string]interface{}) error {
+	var err RequiredError
+	if len(f.Process.Transitions) > transitionIndex {
+		err = f.appendData(data, f.Process.Transitions[transitionIndex].ID)
+	}
+
+	if err.len() == 0 {
+		err := f.fire(transitionIndex)
+		if err == nil {
+			f.AvailableUserTransitions = f.bpnTransitionsCheck();
+			if f.Process.OnFireCompleted != nil {
+				f.Process.OnFireCompleted(f, transitionIndex)
+			}
+			return nil
 		}
-		return nil
+		return err
 	}
 	return err
+
 }
 
 // checks and notify completion of process and sub process
@@ -73,7 +133,7 @@ func (f *Flow) checkCompleted() bool {
 
 			parentFlow, err := f.Process.FlowInstanceLoader(f.ParentID)
 			if err == nil {
-				parentFlow.fireWithTokenId(f.ParentTransitionTokenID)
+				parentFlow.FireSystemTask(f.ParentTransitionTokenID, f.Net.Variables)
 			}
 
 		} else {
@@ -97,8 +157,13 @@ func (f *Flow) fire(transitionIndex int) error {
 }
 
 // fires a system task with tokenID
-func (f *Flow) FireSystemTask(tokenID int) error {
-	return f.fireWithTokenId(tokenID)
+func (f *Flow) FireSystemTask(tokenID int, data map[string]interface{}) error {
+	// daten einspielen
+	err := f.appendData(data, f.Process.Transitions[f.TransitionsInProgress[tokenID]].ID)
+	if err.len() == 0 {
+		return f.fireWithTokenId(tokenID)
+	}
+	return err
 }
 
 // fires a transition from a token in transition
@@ -254,7 +319,7 @@ func parseDelay(s interface{}) time.Duration {
 	if err == nil {
 		return time.Duration(delay) * 1000 * time.Millisecond
 	} else {
-		return time.Duration(1) * time.Second
+		return time.Duration(100) * time.Millisecond
 	}
 }
 

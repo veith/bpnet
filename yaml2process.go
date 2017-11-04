@@ -38,6 +38,10 @@ func MakeProcessFromYaml(yamlstruct ImportNet) Process {
 		ttype = ttypeCheck(transition.TransitionType, "message", ttype, MESSAGE)
 		ttype = ttypeCheck(transition.TransitionType, "timed", ttype, TIMED)
 		ttype = ttypeCheck(transition.TransitionType, "subprocess", ttype, SUBPROCESS)
+		ttype = ttypeCheck(transition.TransitionType, "system", ttype, SYSTEM)
+		ttype = ttypeCheck(transition.TransitionType, "call", ttype, SYSTEM)
+		ttype = ttypeCheck(transition.TransitionType, "ai", ttype, SYSTEM)
+		ttype = ttypeCheck(transition.TransitionType, "api", ttype, SYSTEM)
 		targetNetwork.TransitionTypes = append(targetNetwork.TransitionTypes, int(ttype))
 
 	}

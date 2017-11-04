@@ -58,33 +58,6 @@ func TestProcess_Subflow(t *testing.T) {
 	}
 }
 
-func TestProcess_System(t *testing.T) {
-	process := freshProcess()
-
-	process.InitialState = []int{2, 0, 0, 0, 0, 0, 0, 0, 0}
-	process.TransitionTypes = []int{1, 6, 1, 1, 1, 1, 1}
-
-	process.Transitions = make([]bpnet.Transition, 7)
-	process.Transitions[1].Details = map[string]interface{}{"delay": 2}
-
-	var data map[string]interface{}
-	f := process.CreateFlow("veith")
-	f.Start(data)
-	if len(f.TransitionsInProgress) < 1 {
-		t.Error("Sollte eine erlaubte Systemtransition haben")
-	}
-	// tokenId
-	f.FireSystemTask(sysTaskToken[0]) // sysTaskToken is set from SystemTaskHandler
-	f.FireSystemTask(sysTaskToken[1]) // sysTaskToken is set from SystemTaskHandler
-
-	if len(f.TransitionsInProgress) > 0 {
-		t.Error("Sollte keine erlaubte Systemtransition haben")
-	}
-
-	if f.Net.State[len(f.Net.State)-1] != 2 {
-		t.Error("Should have 1 transition in last place, is %s", f.Net.State[len(f.Net.State)-1])
-	}
-}
 
 func TestMessage(t *testing.T) {
 	process := freshProcess()
@@ -155,7 +128,7 @@ func TestProcess_TimedUnset(t *testing.T) {
 	f := process.CreateFlow("veith")
 	f.Start(data)
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(110 * time.Millisecond)
 	if len(f.Net.TokenIds[3]) != 2 {
 		t.Error("Should fired both timers", f.Net.TokenIds)
 	}
@@ -179,13 +152,13 @@ func TestProcess_TimedFloat(t *testing.T) {
 	process.TransitionTypes = []int{1, 4, 1}
 
 	process.Transitions = make([]bpnet.Transition, 3)
-	process.Transitions[1].Details = map[string]interface{}{"delay": 0.1}
+	process.Transitions[1].Details = map[string]interface{}{"delay": 0.01}
 
 	var data map[string]interface{}
 	f := process.CreateFlow("veith")
 	f.Start(data)
 
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
 	if len(f.Net.TokenIds[3]) != 2 {
 		t.Error("Should fired both timers", f.Net.TokenIds)
 	}
@@ -209,13 +182,13 @@ func TestProcess_TimedParallel(t *testing.T) {
 	process.TransitionTypes = []int{1, 4, 1}
 
 	process.Transitions = make([]bpnet.Transition, 3)
-	process.Transitions[1].Details = map[string]interface{}{"delay": 0.1}
+	process.Transitions[1].Details = map[string]interface{}{"delay": 0.01}
 
 	var data map[string]interface{}
 	f := process.CreateFlow("veith")
 	f.Start(data)
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	if len(f.Net.TokenIds[3]) != 2 {
 		t.Error("Should fired both timers", f.Net.TokenIds)
 	}
@@ -231,13 +204,13 @@ func TestProcess_Timed(t *testing.T) {
 	process.TransitionTypes = []int{1, 4, 1, 1, 1, 1, 1}
 
 	process.Transitions = make([]bpnet.Transition, 5)
-	process.Transitions[1].Details = map[string]interface{}{"delay": 1}
+	process.Transitions[1].Details = map[string]interface{}{"delay": 0.01}
 
 	var data map[string]interface{}
 	f := process.CreateFlow("veith")
 	f.Start(data)
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(12 * time.Millisecond)
 	if f.Net.State[len(f.Net.State)-1] != 1 {
 		t.Error("Should have 10 transition in last place, is %s", f.Net.State[len(f.Net.State)-1])
 	}
@@ -261,8 +234,8 @@ func TestFlow_Fire2(t *testing.T) {
 		t.Error("Sollte eine erlaubte Systemtransition haben")
 		fmt.Println(f.AvailableUserTransitions)
 	}
-	f.Fire(0)
-	err := f.Fire(0)
+	f.Fire(0,data)
+	err := f.Fire(0,data)
 
 	if err == nil {
 		t.Error("Sollte einen Fehler ausgeben, weil Transition bereits gezündet wurde")
@@ -291,7 +264,7 @@ func TestFlow_Fire(t *testing.T) {
 		t.Error("Sollte eine erlaubte Systemtransition haben")
 		fmt.Println(f.AvailableUserTransitions)
 	}
-	f.Fire(0)
+	f.Fire(0,data)
 
 	if len(f.AvailableUserTransitions) != 0 {
 		t.Error("Sollte keine erlaubte Systemtransition mehr haben")
