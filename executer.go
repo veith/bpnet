@@ -5,7 +5,7 @@ import (
 	"time"
 	"github.com/oklog/ulid"
 	"math/rand"
-	"fmt"
+
 )
 
 // Creates a flow (process instance) from a process
@@ -16,7 +16,9 @@ func (p Process) CreateFlow(Owner string) *Flow {
 	flow.Net.OutputMatrix = p.OutputMatrix
 	flow.Net.State = make([]int, len(p.InitialState))
 	copy(flow.Net.State, p.InitialState)
-	flow.Net.Init()
+	flow.Net.ConditionMatrix = make([][]string , len(p.ConditionMatrix))
+	copy(flow.Net.ConditionMatrix, p.ConditionMatrix)
+
 
 	flow.TransitionsInProgress = make(map[int]int)
 	return &flow
@@ -40,6 +42,7 @@ func (flow *Flow) Start(data map[string]interface{}) {
 
 	//TODO: @veith filter data, check for required fields
 	flow.Net.Variables = data
+	flow.Net.Init()
 	flow.AvailableUserTransitions = flow.bpnTransitionsCheck();
 }
 
@@ -241,7 +244,6 @@ func (f *Flow) hasEnabledAutofireing(enabledTransitions []int) bool {
 func parseDelay(s interface{}) time.Duration {
 	var delay float64
 	var err error
-	fmt.Println(s)
 	switch s.(type) {
 	case float64:
 		delay = s.(float64)

@@ -3,10 +3,14 @@ transitions:
   - id: slack
     type: message
     details:
-      broker: slack
+      broker: messagerbrokerfromsubprocess
       token: LLFDSD
       channel: x34s
 
+  - id: delay
+    type: timed
+    details:
+      delay: 0.1
 
 variables:
   - id: message
@@ -23,6 +27,10 @@ places:
     label: start
     tokens: 1
 
+  - id: p1
+    label: p2
+
+
   - id: end
     label: end
 
@@ -34,6 +42,16 @@ arcs:
     weight: 1
 
   - sourceId: slack
+    destinationId: p1
+    type: tp
+    weight: 1
+
+  - sourceId: p1
+    destinationId: delay
+    type: pt
+    weight: 1
+
+  - sourceId: delay
     destinationId: end
     type: tp
     weight: 1

@@ -8,20 +8,15 @@ transitions:
     variables:
      - message
 
-  - id: delay
-    type: timed
+  - id: subproc
+    type: subprocess
     details:
-      delay: 1
-
-  - id: slack
-    type: user
-    details:
-      process: subprocess.sample
+      subprocess: subprocess.sample
 
   - id: log
     type: message
     details:
-      broker: logger
+      broker: loggerfromsample1
       xwas: hier eingeben
 
 
@@ -40,11 +35,11 @@ places:
     label: start
     tokens: 1
 
-  - id: weiche
-    label: weiche vor delay und slack
+  - id: p1
+    label: p1
 
-  - id: prelog
-    label: prelog
+  - id: p2
+    label: p1
 
   - id: end
     label: end
@@ -52,33 +47,26 @@ places:
 
 arcs:
   - sourceId: start
-    destinationId: write
-    type: pt
-    weight: 1
-
-  - sourceId: write
-    destinationId: weiche
-    type: tp
-
-
-  - sourceId: weiche
-    destinationId: delay
-    type: pt
-
-  - sourceId: delay
-    destinationId: prelog
-    type: tp
-
-  - sourceId: weiche
-    destinationId: slack
+    destinationId: user
     type: pt
     condition: counts > 5
+    weight: 1
 
-  - sourceId: slack
-    destinationId: prelog
+  - sourceId: user
+    destinationId: p1
     type: tp
 
-  - sourceId: prelog
+
+  - sourceId: p1
+    destinationId: subproc
+    type: pt
+
+
+  - sourceId: subproc
+    destinationId: p2
+    type: tp
+
+  - sourceId: p2
     destinationId: log
     type: pt
 

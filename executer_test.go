@@ -463,13 +463,13 @@ func SystemTaskHandler(flow *bpnet.Flow, tokenID int) bool {
 
 func OnSubprocessStarted(flow *bpnet.Flow, tokenID int) bool {
 	// subflow starten
-	fmt.Println("start subprocess", tokenID)
+	fmt.Println("start subprocess", tokenID, flow.ProcessName)
 	return true
 }
 
 func OnSubprocessCompleted(flow *bpnet.Flow, tokenID int) bool {
 	// subflow starten
-	fmt.Println("completed subprocess", flow.ID, tokenID)
+	fmt.Println("completed subprocess", flow.ID, flow.ProcessName)
 	return true
 }
 func OnProcessStarted(flow *bpnet.Flow, tokenID int) bool {
