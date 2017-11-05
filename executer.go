@@ -6,7 +6,7 @@ import (
 	"github.com/oklog/ulid"
 	"math/rand"
 	"errors"
- )
+)
 
 // Creates a flow (process instance) from a process
 func (p Process) CreateFlow(Owner string) *Flow {
@@ -274,7 +274,7 @@ func executeTimer(f *Flow, transition int, tokenID int) {
 			if f.Process.OnTimerCompleted != nil {
 				f.Process.OnTimerCompleted(f, transition)
 			}
-			if err == nil{
+			if err == nil {
 				f.AvailableUserTransitions = f.bpnTransitionsCheck()
 			}
 			delete(f.TransitionsInProgress, tokenID)
@@ -318,7 +318,7 @@ func parseDelay(s interface{}) time.Duration {
 		delay = float64(s.(int))
 	}
 
-	if err == nil {
+	if err == nil && delay != 0 {
 		return time.Duration(delay) * 1000 * time.Millisecond
 	} else {
 		return time.Duration(100) * time.Millisecond
@@ -370,27 +370,27 @@ type Flow struct {
 }
 
 type Process struct {
-	Name                    string       `json:"name"`        // Network Name
-	InputMatrix             [][]int      `json:"-"`           // Input Matrix
-	OutputMatrix            [][]int      `json:"-"`           // Output Matrix
-	ConditionMatrix         [][]string   `json:"-"`           // Condition Matrix
-	TransitionTypes         []int        `json:"-"`           // Transition Types
-	InitialState            []int        `json:"-"`           // Initial State
-	Transitions             []Transition `json:"transitions"` // detailangaben zur transition
-	Variables               [] Variable  `json:"variables"`
-	StartVariables          []string     `json:"startvariables"`
-	OnSystemTask            SystemTask //system task handle TODO: check https://siadat.github.io/post/context
-	OnFireCompleted         Notify     // nach jedem erfolgreichen Fire
-	OnTimerStarted          Notify     //timer hook handle
-	OnTimerCompleted        Notify     //timer hook handle
-	OnSendMessage           Notify     // message send handler
-	OnFlowCreated           Notify     // process started hook, after autofireing hooks
-	OnProcessStarted        Notify     // process started hook, after autofireing hooks
-	OnProcessCompleted      Notify     // process finished
-	OnSubProcessStarted     Notify
-	OnSubProcessCompleted   Notify
-	FlowInstanceLoader      FlowInstanceLoader      // prozessinstanzen um parent prozesse oder subprozesse zu referenzieren
-	ProcessDefinitionLoader ProcessDefinitionLoader // prozessdefinitionen um subprozesse zu starten
+	Name                    string                  `json:"name"`        // Network Name
+	InputMatrix             [][]int                 `json:"-"`           // Input Matrix
+	OutputMatrix            [][]int                 `json:"-"`           // Output Matrix
+	ConditionMatrix         [][]string              `json:"-"`           // Condition Matrix
+	TransitionTypes         []int                   `json:"-"`           // Transition Types
+	InitialState            []int                   `json:"-"`           // Initial State
+	Transitions             []Transition            `json:"transitions"` // detailangaben zur transition
+	Variables               [] Variable             `json:"variables"`
+	StartVariables          []string                `json:"startvariables"`
+	OnSystemTask            SystemTask              `json:"_"` //system task handle TODO: check https://siadat.github.io/post/context
+	OnFireCompleted         Notify                  `json:"_"` // nach jedem erfolgreichen Fire
+	OnTimerStarted          Notify                  `json:"_"` //timer hook handle
+	OnTimerCompleted        Notify                  `json:"_"` //timer hook handle
+	OnSendMessage           Notify                  `json:"_"` // message send handler
+	OnFlowCreated           Notify                  `json:"_"` // process started hook, after autofireing hooks
+	OnProcessStarted        Notify                  `json:"_"` // process started hook, after autofireing hooks
+	OnProcessCompleted      Notify                  `json:"_"` // process finished
+	OnSubProcessStarted     Notify                  `json:"_"`
+	OnSubProcessCompleted   Notify                  `json:"_"`
+	FlowInstanceLoader      FlowInstanceLoader      `json:"_"` // prozessinstanzen um parent prozesse oder subprozesse zu referenzieren
+	ProcessDefinitionLoader ProcessDefinitionLoader `json:"_"` // prozessdefinitionen um subprozesse zu starten
 }
 
 // interface um bei autofire zu zünden

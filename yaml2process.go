@@ -77,7 +77,7 @@ func MakeProcessFromYaml(yamlstruct ImportNet) Process {
 		}
 
 		if (arc.Type == "tp") {
-			outputMatrix[transitions[arc.Source]][places[arc.Destination]] = max(1, arc.Weight)
+			outputMatrix[transitions[arc.Source]][places[arc.Destination]] = max(arc.Weight,1)
 		}
 	}
 	targetNetwork.InputMatrix = inputMatrix

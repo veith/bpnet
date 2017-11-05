@@ -61,7 +61,7 @@ func TestConditions(t *testing.T) {
 	flow.Start(d)
 	flow.Fire(0,d)
 
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(120 * time.Millisecond)
 
 	if flow.Net.State[0] != 1 {
 		t.Error("process muss aufgrund bedingungen hier aufhören")
@@ -78,7 +78,7 @@ func TestMakeProcessFromYaml(t *testing.T) {
 	flow.Start(d)
 
 	flow.Fire(0,d)
-	time.Sleep(900 * time.Millisecond) // inner delay
+	time.Sleep(100 * time.Millisecond) // inner delay
 
 	if flow.Net.State[3] != 1 {
 		t.Error("process muss komplett durchlaufen", flow.Net.State)
@@ -92,6 +92,13 @@ func loadProcDef(processName string) (*bpnet.Process, error) {
 func flowloader(flowID ulid.ULID) (*bpnet.Flow, error) {
 	return parentflow, nil
 }
+func OnSystemTaskWrong(flow *bpnet.Flow, tokenID int) bool {
+	time.AfterFunc(100, func() {
+		d := map[string]interface{}{"countsssssss": 11}
+		flow.FireSystemTask(tokenID, d)
+	})
+	return true
+}
 func OnSystemTask(flow *bpnet.Flow, tokenID int) bool {
 	time.AfterFunc(100, func() {
 		d := map[string]interface{}{"counts": 11}
@@ -103,7 +110,6 @@ func OnSystemTask(flow *bpnet.Flow, tokenID int) bool {
 
 func readfile(filename string) bpnet.Process {
 	b, _ := ioutil.ReadFile(filename)
-
 	// Unmarshal the YAML
 	var yamlstruct bpnet.ImportNet
 	err := yaml.Unmarshal([]byte(b), &yamlstruct)
