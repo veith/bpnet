@@ -16,7 +16,7 @@ func TestFireWrongConditions(t *testing.T) {
 	process := readfile("test/sample1.yaml")
 
 	flow := process.CreateFlow("veith")
-	parentflow = flow
+	parentflow = &flow
 	d := map[string]interface{}{"counts": 12}
 	flow.Start(d)
 	err := flow.Fire(0,d)
@@ -56,7 +56,7 @@ func TestConditions(t *testing.T) {
 	process := readfile("test/sample1.yaml")
 
 	flow := process.CreateFlow("veith")
-	parentflow = flow
+	parentflow = &flow
 	d := map[string]interface{}{"counts": 1}
 	flow.Start(d)
 	flow.Fire(0,d)
@@ -73,7 +73,7 @@ func TestMakeProcessFromYaml(t *testing.T) {
 	process := readfile("test/sample1.yaml")
 
 	flow := process.CreateFlow("veith")
-	parentflow = flow
+	parentflow = &flow
 	d := map[string]interface{}{"counts": 9, "message":"messagemessage"}
 	flow.Start(d)
 

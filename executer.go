@@ -9,7 +9,7 @@ import (
 )
 
 // Creates a flow (process instance) from a process
-func (p Process) CreateFlow(Owner string) *Flow {
+func (p Process) CreateFlow(Owner string) Flow {
 	flow := Flow{Owner: Owner, Process: p, ID: makeUlid()}
 	flow.ProcessName = p.Name
 	flow.Net.InputMatrix = p.InputMatrix
@@ -20,7 +20,7 @@ func (p Process) CreateFlow(Owner string) *Flow {
 	copy(flow.Net.ConditionMatrix, p.ConditionMatrix)
 
 	flow.TransitionsInProgress = make(map[int]int)
-	return &flow
+	return flow
 }
 
 // read flow data
@@ -41,7 +41,7 @@ func (flow *Flow) Start(data map[string]interface{}) error {
 	flow.Net.Variables = make(map[string]interface{})
 
 	err := flow.appendData(data, "___start")
-	if err.len() == 0 {
+	if err.Len() == 0 {
 		flow.Net.Init()
 		flow.AvailableUserTransitions = flow.bpnTransitionsCheck();
 	}
@@ -53,7 +53,7 @@ type RequiredError struct {
 	error
 }
 
-func (e *RequiredError) len() int {
+func (e *RequiredError) Len() int {
 	return len(e.Fields)
 }
 
@@ -103,7 +103,7 @@ func (f *Flow) Fire(transitionIndex int, data map[string]interface{}) error {
 		err = f.appendData(data, f.Process.Transitions[transitionIndex].ID)
 	}
 
-	if err.len() == 0 {
+	if err.Len() == 0 {
 		err := f.fire(transitionIndex)
 		if err == nil {
 			f.AvailableUserTransitions = f.bpnTransitionsCheck();
@@ -159,7 +159,7 @@ func (f *Flow) fire(transitionIndex int) error {
 func (f *Flow) FireSystemTask(tokenID int, data map[string]interface{}) error {
 	// daten einspielen
 	err := f.appendData(data, f.Process.Transitions[f.TransitionsInProgress[tokenID]].ID)
-	if err.len() == 0 {
+	if err.Len() == 0 {
 		return f.fireWithTokenId(tokenID)
 	}
 	return err

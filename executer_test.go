@@ -50,7 +50,7 @@ func TestProcess_Subflow(t *testing.T) {
 	var data map[string]interface{}
 	f := process.CreateFlow("veith")
 
-	FlowCollection[f.ID] = f
+	FlowCollection[f.ID] = &f
 	f.Start(data)
 
 	if f.Net.State[len(f.Net.State)-1] != 3 {
@@ -94,7 +94,7 @@ func TestProcess_Auto(t *testing.T) {
 	process.TransitionTypes = []int{1, 1, 1, 1, 1, 1, 1}
 	f := process.CreateFlow("veith")
 
-	FlowCollection[f.ID] = f
+	FlowCollection[f.ID] = &f
 	var data map[string]interface{}
 	f.Start(data)
 
@@ -221,7 +221,7 @@ func TestFlow_Fire2(t *testing.T) {
 	process.TransitionTypes = []int{2, 1, 1, 1, 1, 1, 1}
 
 	f := process.CreateFlow("veith")
-	FlowCollection[f.ID] = f
+	FlowCollection[f.ID] = &f
 	if len(f.AvailableUserTransitions) != 0 {
 		t.Error("Sollte keine erlaubte Systemtransition haben")
 		fmt.Println(f.AvailableUserTransitions)
@@ -251,7 +251,7 @@ func TestFlow_Fire(t *testing.T) {
 	process.TransitionTypes = []int{2, 1, 1, 1, 1, 1, 1}
 
 	f := process.CreateFlow("veith")
-	FlowCollection[f.ID] = f
+	FlowCollection[f.ID] = &f
 	if len(f.AvailableUserTransitions) != 0 {
 		t.Error("Sollte keine erlaubte Systemtransition haben")
 		fmt.Println(f.AvailableUserTransitions)
@@ -278,7 +278,7 @@ func TestFlow_Start(t *testing.T) {
 	process.TransitionTypes = []int{2, 1, 1, 1, 1, 1, 1}
 
 	f := process.CreateFlow("veith")
-	FlowCollection[f.ID] = f
+	FlowCollection[f.ID] = &f
 	if len(f.AvailableUserTransitions) != 0 {
 		t.Error("Sollte keine erlaubte Systemtransition haben")
 		fmt.Println(f.AvailableUserTransitions)
@@ -309,7 +309,7 @@ func TestProcess_CreateFlow(t *testing.T) {
 	process.TransitionTypes = []int{2, 1, 1, 1, 1, 1, 1}
 
 	f := process.CreateFlow("veith")
-	FlowCollection[f.ID] = f
+	FlowCollection[f.ID] = &f
 	if len(f.AvailableUserTransitions) != 0 {
 		t.Error("Sollte keine erlaubte Systemtransition haben")
 		fmt.Println(f.AvailableUserTransitions)
