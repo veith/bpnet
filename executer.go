@@ -8,6 +8,10 @@ import (
 	"errors"
 )
 
+func RegisterHandler(handler Handler)  {
+	BPNet = &handler
+}
+
 // Creates a flow (process instance) from a process
 func (p Process) CreateFlow(Owner string) Flow {
 	flow := Flow{Owner: Owner, Process: p, ID: makeUlid()}
@@ -31,11 +35,11 @@ func (flow *Flow) ReadData() map[string]interface{} {
 // starts the flow with initial data
 func (flow *Flow) Start(data map[string]interface{}) error {
 	//init
-	if flow.Process.OnSubProcessStarted != nil && flow.ParentTransitionTokenID != 0 {
-		flow.Process.OnSubProcessStarted(flow, flow.ParentTransitionTokenID)
+	if BPNet.OnSubProcessStarted != nil && flow.ParentTransitionTokenID != 0 {
+		BPNet.OnSubProcessStarted(flow, flow.ParentTransitionTokenID)
 	} else {
-		if flow.Process.OnProcessStarted != nil {
-			flow.Process.OnProcessStarted(flow, 0)
+		if BPNet.OnProcessStarted != nil {
+			BPNet.OnProcessStarted(flow, 0)
 		}
 	}
 	flow.Net.Variables = make(map[string]interface{})
@@ -107,8 +111,8 @@ func (f *Flow) Fire(transitionIndex int, data map[string]interface{}) error {
 		err := f.fire(transitionIndex)
 		if err == nil {
 			f.AvailableUserTransitions = f.bpnTransitionsCheck();
-			if f.Process.OnFireCompleted != nil {
-				f.Process.OnFireCompleted(f, transitionIndex)
+			if BPNet.OnFireCompleted != nil {
+				BPNet.OnFireCompleted(f, transitionIndex)
 			}
 			return nil
 		}
@@ -125,19 +129,19 @@ func (f *Flow) checkCompleted() bool {
 
 			// fire parent token
 
-			if f.Process.OnSubProcessCompleted != nil {
-				f.Process.OnSubProcessCompleted(f, f.ParentTransitionTokenID)
+			if BPNet.OnSubProcessCompleted != nil {
+				BPNet.OnSubProcessCompleted(f, f.ParentTransitionTokenID)
 			}
 
-			parentFlow, err := f.Process.FlowInstanceLoader(f.ParentID)
+			parentFlow, err := BPNet.FlowInstanceLoader(f.ParentID)
 			if err == nil {
 
 				parentFlow.FireSystemTask(f.ParentTransitionTokenID, f.Net.Variables)
 			}
 
 		} else {
-			if f.Process.OnProcessCompleted != nil {
-				f.Process.OnProcessCompleted(f, 0)
+			if BPNet.OnProcessCompleted != nil {
+				BPNet.OnProcessCompleted(f, 0)
 			}
 		}
 		return true
@@ -200,7 +204,7 @@ func (f *Flow) bpnTransitionsCheck() []int {
 
 			if f.Process.TransitionTypes[transition] == int(MESSAGE) {
 				// send message via extHandler, continue on true
-				if f.Process.OnSendMessage != nil && f.Process.OnSendMessage(f, transition) {
+				if BPNet.OnSendMessage != nil && BPNet.OnSendMessage(f, transition) {
 					f.fire(transition)
 				} else {
 					panic("OnSendMessage not available")
@@ -225,7 +229,7 @@ func (f *Flow) bpnTransitionsCheck() []int {
 
 					// systemtask
 					if f.Process.TransitionTypes[transition] == int(SYSTEM) && !f.tokenRegistred(tokenID) {
-						if f.Process.OnSystemTask(f, tokenID) {
+						if BPNet.OnSystemTask(f, tokenID) {
 							f.TransitionsInProgress[tokenID] = transition
 						}
 					}
@@ -235,7 +239,7 @@ func (f *Flow) bpnTransitionsCheck() []int {
 
 						f.TransitionsInProgress[tokenID] = transition
 						// sub erstellen und starten
-						subprocess, err := f.Process.ProcessDefinitionLoader(f.Process.Transitions[transition].Details["subprocess"].(string))
+						subprocess, err := BPNet.ProcessDefinitionLoader(f.Process.Transitions[transition].Details["subprocess"].(string))
 
 						if err == nil {
 							subflow := subprocess.CreateFlow(f.Owner)
@@ -260,8 +264,8 @@ func (f *Flow) bpnTransitionsCheck() []int {
 // executes a timer
 func executeTimer(f *Flow, transition int, tokenID int) {
 
-	if f.Process.OnTimerStarted != nil {
-		f.Process.OnTimerStarted(f, transition)
+	if BPNet.OnTimerStarted != nil {
+		BPNet.OnTimerStarted(f, transition)
 	}
 
 	// verzögert auslösen
@@ -271,8 +275,8 @@ func executeTimer(f *Flow, transition int, tokenID int) {
 			//f.fireWithTokenId(tokenID)
 			err := f.Net.FireWithTokenId(transition, tokenID)
 
-			if f.Process.OnTimerCompleted != nil {
-				f.Process.OnTimerCompleted(f, transition)
+			if BPNet.OnTimerCompleted != nil {
+				BPNet.OnTimerCompleted(f, transition)
 			}
 			if err == nil {
 				f.AvailableUserTransitions = f.bpnTransitionsCheck()
@@ -379,13 +383,19 @@ type Process struct {
 	Transitions             []Transition            `json:"transitions"` // detailangaben zur transition
 	Variables               [] Variable             `json:"variables"`
 	StartVariables          []string                `json:"startvariables"`
+	
+}
+
+var BPNet *Handler
+
+type Handler struct {
+	OnProcessStarted Notify // process started hook, after autofireing hooks
 	OnSystemTask            SystemTask              `json:"_"` //system task handle TODO: check https://siadat.github.io/post/context
 	OnFireCompleted         Notify                  `json:"_"` // nach jedem erfolgreichen Fire
 	OnTimerStarted          Notify                  `json:"_"` //timer hook handle
 	OnTimerCompleted        Notify                  `json:"_"` //timer hook handle
 	OnSendMessage           Notify                  `json:"_"` // message send handler
 	OnFlowCreated           Notify                  `json:"_"` // process started hook, after autofireing hooks
-	OnProcessStarted        Notify                  `json:"_"` // process started hook, after autofireing hooks
 	OnProcessCompleted      Notify                  `json:"_"` // process finished
 	OnSubProcessStarted     Notify                  `json:"_"`
 	OnSubProcessCompleted   Notify                  `json:"_"`

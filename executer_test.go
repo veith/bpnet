@@ -11,9 +11,23 @@ import (
 
 var process bpnet.Process
 var FlowCollection map[ulid.ULID]*bpnet.Flow
+var handler bpnet.Handler
 
 func init() {
 	FlowCollection = map[ulid.ULID]*bpnet.Flow{}
+	handler.OnProcessStarted = OnProcessStarted
+	handler.OnSystemTask = OnSystemTask
+	handler.OnFireCompleted = fireCompleted
+	handler.OnTimerStarted = triggerhandle
+	handler.OnTimerCompleted = OnTimerCompleted
+	handler.OnSubProcessCompleted = OnSubprocessCompleted
+	handler.OnProcessCompleted = OnProcessCompleted
+	handler.OnSubProcessStarted = OnSubprocessStarted
+	handler.ProcessDefinitionLoader = loadSubProcess
+	handler.FlowInstanceLoader = loadFlowInstance
+	handler.OnSendMessage = sendMessage
+
+	bpnet.RegisterHandler(handler)
 }
 
 func TestDataPointer(t *testing.T) {
@@ -73,7 +87,7 @@ func TestMessage(t *testing.T) {
 	}
 	process.InitialState = []int{2, 0, 0, 0}
 	process.TransitionTypes = []int{1, 3, 1}
-	process.OnSendMessage = sendMessage
+
 	process.Transitions = make([]bpnet.Transition, 3)
 	process.Transitions[1].Details = map[string]interface{}{"broker": "sms"}
 	broker = "oh"
@@ -349,16 +363,7 @@ func freshProcess() bpnet.Process {
 		TransitionTypes: []int{2, 1, 1, 1, 1, 1, 2},
 	}
 
-	process.OnSystemTask = SystemTaskHandler
-	process.OnFireCompleted = fireCompleted
-	process.OnTimerStarted = triggerhandle
-	process.OnTimerCompleted = OnTimerCompleted
-	process.OnSubProcessCompleted = OnSubprocessCompleted
-	process.OnProcessStarted = OnProcessStarted
-	process.OnProcessCompleted = OnProcessCompleted
-	process.OnSubProcessStarted = OnSubprocessStarted
-	process.ProcessDefinitionLoader = loadSubProcess
-	process.FlowInstanceLoader = loadFlowInstance
+
 	return process
 }
 func freshSubProcess() bpnet.Process {
@@ -376,17 +381,6 @@ func freshSubProcess() bpnet.Process {
 		TransitionTypes: []int{1, 3, 1},
 	}
 
-	process.OnSystemTask = SystemTaskHandler
-	process.OnFireCompleted = SUBfireCompleted
-	process.OnTimerStarted = triggerhandle
-	process.OnTimerCompleted = OnTimerCompleted
-	process.OnSubProcessStarted = OnSubprocessStarted
-	process.OnSubProcessCompleted = OnSubprocessCompleted
-	process.OnProcessStarted = OnProcessStarted
-	process.OnProcessCompleted = OnProcessCompleted
-	process.ProcessDefinitionLoader = loadSubProcess
-	process.FlowInstanceLoader = loadFlowInstance
-	process.OnSendMessage = sendMessage
 
 	process.Transitions = make([]bpnet.Transition, 3)
 	process.Transitions[1].Details = map[string]interface{}{"broker": "sms"}
