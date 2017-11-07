@@ -8,8 +8,8 @@ import (
 	"errors"
 )
 
-func RegisterHandler(handler Handler)  {
-	BPNet = &handler
+func RegisterHandler(handler *Handler)  {
+	BPNet = handler
 }
 
 // Creates a flow (process instance) from a process
@@ -48,6 +48,7 @@ func (flow *Flow) Start(data map[string]interface{}) error {
 	if err.Len() == 0 {
 		flow.Net.Init()
 		flow.AvailableUserTransitions = flow.bpnTransitionsCheck();
+		return nil
 	}
 	return err
 }

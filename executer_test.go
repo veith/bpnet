@@ -27,7 +27,7 @@ func init() {
 	handler.FlowInstanceLoader = loadFlowInstance
 	handler.OnSendMessage = sendMessage
 
-	bpnet.RegisterHandler(handler)
+	bpnet.RegisterHandler(&handler)
 }
 
 func TestDataPointer(t *testing.T) {
