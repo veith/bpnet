@@ -58,8 +58,8 @@ func TestProcess_Subflow(t *testing.T) {
 	process.TransitionTypes = []int{1, 5, 1, 1, 5, 1, 1}
 
 	process.Transitions = make([]bpnet.Transition, 7)
-	process.Transitions[4].Details = map[string]interface{}{"subprocess": "sub"}
-	process.Transitions[1].Details = map[string]interface{}{"subprocess": "sub"}
+	process.Transitions[4].Details = map[string]interface{}{"process": "sub"}
+	process.Transitions[1].Details = map[string]interface{}{"process": "sub"}
 
 	var data map[string]interface{}
 	f := process.CreateFlow("veith")

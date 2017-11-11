@@ -240,7 +240,7 @@ func (f *Flow) bpnTransitionsCheck() []int {
 
 						f.TransitionsInProgress[tokenID] = transition
 						// sub erstellen und starten
-						subprocess, err := BPNet.ProcessDefinitionLoader(f.Process.Transitions[transition].Details["subprocess"].(string))
+						subprocess, err := BPNet.ProcessDefinitionLoader(f.Process.Transitions[transition].Details["process"].(string))
 
 						if err == nil {
 							subflow := subprocess.CreateFlow(f.Owner)
