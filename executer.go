@@ -8,7 +8,7 @@ import (
 	"errors"
 )
 
-func RegisterHandler(handler *Handler)  {
+func RegisterHandler(handler *Handler) {
 	BPNet = handler
 }
 
@@ -96,9 +96,7 @@ func (flow *Flow) appendData(data map[string]interface{}, transitionID string) R
 			}
 		}
 	}
-
 	return requiredError
-
 }
 
 // Fire a transition / task
@@ -111,7 +109,7 @@ func (f *Flow) Fire(transitionIndex int, data map[string]interface{}) error {
 	if err.Len() == 0 {
 		err := f.fire(transitionIndex)
 		if err == nil {
-			f.AvailableUserTransitions = f.bpnTransitionsCheck();
+			//f.AvailableUserTransitions = f.bpnTransitionsCheck();
 			if BPNet.OnFireCompleted != nil {
 				BPNet.OnFireCompleted(f, transitionIndex)
 			}
@@ -125,6 +123,11 @@ func (f *Flow) Fire(transitionIndex int, data map[string]interface{}) error {
 
 // checks and notify completion of process and sub process
 func (f *Flow) checkCompleted() bool {
+	// onStateChange hier
+
+	if BPNet.OnStateChanged != nil {
+		BPNet.OnStateChanged(f)
+	}
 	if len(f.Net.EnabledTransitions) == 0 {
 		if f.ParentTransitionTokenID != 0 {
 
@@ -361,38 +364,38 @@ const (
 
 type TaskType int
 type Flow struct {
-	ID                       ulid.ULID   `json:"id"`                // flow id
-	ProcessName              string      `json:"process"`           // Network Name
-	ParentID                 ulid.ULID   `json:"parent_id"`         // flow id des parents
-	ParentTransitionTokenID  int         `json:"parent_transition"` // die zu feuernde Transition des Parents bei ende des SubFlows
-	ActivatedSubFlows        []string    `json:"sub_flows"`         // laufende subFlows um bei denen die möglichen Transitionen zu ermitteln (für hateoas)
-	Owner                    string      `json:"owner"`             // Owner
-	AvailableUserTransitions []int       `json:"usertasks"`         // enabled transitions von user tasks
-	TransitionsInProgress    map[int]int `json:"in_progress"`       // [tokenID]transition enabled timers, ActivatedTimers, subflows,...
-	Net                      petrinet.Net                           // the running net
-	Process                  Process     `json:"process"`
-	RunningSubProcesses      []ulid.ULID `json:"running_sub_processes"`
+	ID                       ulid.ULID    `json:"id"`                // flow id
+	ProcessName              string       `json:"procname"`           // Network Name
+	ParentID                 ulid.ULID    `json:"parent_process"`         // flow id des parents
+	ParentTransitionTokenID  int          `json:"parent_transition"` // die zu feuernde Transition des Parents bei ende des SubFlows
+	ActivatedSubFlows        []string     `json:"sub_flows"`         // laufende subFlows um bei denen die möglichen Transitionen zu ermitteln (für hateoas)
+	Owner                    string       `json:"owner"`             // Owner
+	AvailableUserTransitions []int        `json:"usertasks"`         // enabled transitions von user tasks
+	TransitionsInProgress    map[int]int  `json:"in_progress"`       // [tokenID]transition enabled timers, ActivatedTimers, subflows,...
+	Net                      petrinet.Net `json:"net"`               // the running net
+	Process                  Process      `json:"process"`
+	RunningSubProcesses      []ulid.ULID  `json:"running_sub_processes"`
 }
 
 type Process struct {
-	Name                    string                  `json:"name"`        // Network Name
-	InputMatrix             [][]int                 `json:"-"`           // Input Matrix
-	OutputMatrix            [][]int                 `json:"-"`           // Output Matrix
-	ConditionMatrix         [][]string              `json:"-"`           // Condition Matrix
-	TransitionTypes         []int                   `json:"-"`           // Transition Types
-	InitialState            []int                   `json:"-"`           // Initial State
-	Transitions             []Transition            `json:"transitions"` // detailangaben zur transition
-	Variables               [] Variable             `json:"variables"`
-	StartVariables          []string                `json:"startvariables"`
-	
+	Name            string       `json:"name"`        // Network Name
+	InputMatrix     [][]int      `json:"-"`           // Input Matrix
+	OutputMatrix    [][]int      `json:"-"`           // Output Matrix
+	ConditionMatrix [][]string   `json:"-"`           // Condition Matrix
+	TransitionTypes []int        `json:"-"`           // Transition Types
+	InitialState    []int        `json:"-"`           // Initial State
+	Transitions     []Transition `json:"transitions"` // detailangaben zur transition
+	Variables       []Variable   `json:"variables"`
+	StartVariables  []string     `json:"startvariables"`
 }
 
 var BPNet *Handler
 
 type Handler struct {
-	OnProcessStarted Notify // process started hook, after autofireing hooks
+	OnProcessStarted        Notify                             // process started hook, after autofireing hooks
 	OnSystemTask            SystemTask              `json:"_"` //system task handle TODO: check https://siadat.github.io/post/context
 	OnFireCompleted         Notify                  `json:"_"` // nach jedem erfolgreichen Fire
+	OnStateChanged          Change                  `json:"_"` // nach jeder Stateveränderung
 	OnTimerStarted          Notify                  `json:"_"` //timer hook handle
 	OnTimerCompleted        Notify                  `json:"_"` //timer hook handle
 	OnSendMessage           Notify                  `json:"_"` // message send handler
@@ -407,6 +410,7 @@ type Handler struct {
 // interface um bei autofire zu zünden
 
 type Notify func(flow *Flow, transitionIndex int) bool
+type Change func(flow *Flow) bool
 type SystemTask func(flow *Flow, tokenID int) bool
 type ProcessDefinitionLoader func(processName string) (*Process, error)
 type FlowInstanceLoader func(flowID ulid.ULID) (*Flow, error)

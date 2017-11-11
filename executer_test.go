@@ -30,6 +30,27 @@ func init() {
 	bpnet.RegisterHandler(&handler)
 }
 
+func TestProcess_CompleteOnce(t *testing.T) {
+	process := freshProcess()
+	process.InitialState = []int{10, 0, 0, 0, 0, 0, 0, 0, 0}
+	process.TransitionTypes = []int{1, 1, 1, 1, 1, 1, 1}
+	f := process.CreateFlow("veith")
+	completed = 0
+	FlowCollection[f.ID] = &f
+	var data map[string]interface{}
+	f.Start(data)
+
+	// last place should have n tokens
+	if f.Net.State[len(f.Net.State)-1] != 10 {
+		t.Error("Should have 10 transition in last place, is %s", f.Net.State[len(f.Net.State)-1])
+	}
+	time.Sleep(10 * time.Millisecond)
+	// sollte nur ein mal beenden
+	if completed !=1{
+		t.Error("Should only complete once, is", completed)
+	}
+}
+
 func TestDataPointer(t *testing.T) {
 	process := freshProcess()
 	process.InitialState = []int{10, 0, 0, 0, 0, 0, 0, 0, 0}
@@ -444,9 +465,11 @@ func OnProcessStarted(flow *bpnet.Flow, tokenID int) bool {
 	fmt.Println("START process", flow.ID, tokenID)
 	return true
 }
+var completed int
 func OnProcessCompleted(flow *bpnet.Flow, tokenID int) bool {
 	// subflow starten
 	fmt.Println("COMPLETE process", flow.ID, tokenID)
+	completed +=1
 	return true
 }
 
