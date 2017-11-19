@@ -276,7 +276,6 @@ func executeTimer(f *Flow, transition int, tokenID int) {
 
 	time.AfterFunc(parseDelay(f.Process.Transitions[transition].Details["delay"]), func() {
 		if f.tokenRegistred(tokenID) {
-			//f.fireWithTokenId(tokenID)
 			err := f.Net.FireWithTokenId(transition, tokenID)
 
 			if BPNet.OnTimerCompleted != nil {
@@ -293,10 +292,8 @@ func executeTimer(f *Flow, transition int, tokenID int) {
 // check if a token is already registred in inTransition
 func (f *Flow) tokenRegistred(tokenID int) bool {
 	if _, ok := f.TransitionsInProgress[tokenID]; ok {
-		//do something here
 		return true
 	}
-
 	return false
 }
 
@@ -365,8 +362,8 @@ const (
 type TaskType int
 type Flow struct {
 	ID                       ulid.ULID    `json:"id"`                // flow id
-	ProcessName              string       `json:"procname"`           // Network Name
-	ParentID                 ulid.ULID    `json:"parent_process"`         // flow id des parents
+	ProcessName              string       `json:"procname"`          // Network Name
+	ParentID                 ulid.ULID    `json:"parent_process"`    // flow id des parents
 	ParentTransitionTokenID  int          `json:"parent_transition"` // die zu feuernde Transition des Parents bei ende des SubFlows
 	ActivatedSubFlows        []string     `json:"sub_flows"`         // laufende subFlows um bei denen die möglichen Transitionen zu ermitteln (für hateoas)
 	Owner                    string       `json:"owner"`             // Owner
@@ -378,21 +375,22 @@ type Flow struct {
 }
 
 type Process struct {
-	Name            string       `json:"name"`        // Network Name
-	InputMatrix     [][]int      `json:"-"`           // Input Matrix
-	OutputMatrix    [][]int      `json:"-"`           // Output Matrix
-	ConditionMatrix [][]string   `json:"-"`           // Condition Matrix
-	TransitionTypes []int        `json:"-"`           // Transition Types
-	InitialState    []int        `json:"-"`           // Initial State
-	Transitions     []Transition `json:"transitions"` // detailangaben zur transition
-	Variables       []Variable   `json:"variables"`
-	StartVariables  []string     `json:"startvariables"`
+	Name                 string       `json:"name"`        // Network Name
+	InputMatrix          [][]int      `json:"-"`           // Input Matrix
+	OutputMatrix         [][]int      `json:"-"`           // Output Matrix
+	ConditionMatrix      [][]string   `json:"-"`           // Condition Matrix
+	TransitionTypes      []int        `json:"-"`           // Transition Types
+	InitialState         []int        `json:"-"`           // Initial State
+	Transitions          []Transition `json:"transitions"` // detailangaben zur transition
+	Variables            []Variable   `json:"variables"`
+	StartVariables       []string     `json:"startvariables"`
+	SingletonIdentifiers []string     `json:"singletonidentifiers"` // Variable um zu überprüfen dass ein Prozess nur 1x mit dieser läuft
 }
 
 var BPNet *Handler
 
 type Handler struct {
-	OnProcessStarted        Notify                             // process started hook, after autofireing hooks
+	OnProcessStarted        Notify                  `json:"_"` // process started hook, after autofireing hooks
 	OnSystemTask            SystemTask              `json:"_"` //system task handle TODO: check https://siadat.github.io/post/context
 	OnFireCompleted         Notify                  `json:"_"` // nach jedem erfolgreichen Fire
 	OnStateChanged          Change                  `json:"_"` // nach jeder Stateveränderung
