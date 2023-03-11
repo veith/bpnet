@@ -1,13 +1,13 @@
 package bpnet_test
 
 import (
-	"io/ioutil"
 	"fmt"
 	"github.com/ghodss/yaml"
+	"github.com/oklog/ulid"
 	"github.com/veith/bpnet"
+	"io/ioutil"
 	"testing"
 	"time"
-	"github.com/oklog/ulid"
 )
 
 var parentflow *bpnet.Flow

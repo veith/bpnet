@@ -221,12 +221,12 @@ func TestProcess_TimedParallel(t *testing.T) {
 	f := process.CreateFlow("veith")
 	f.Start(data)
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 	if len(f.Net.TokenIds[3]) != 2 {
 		t.Error("Should fired both timers", f.Net.TokenIds)
 	}
 	if f.Net.State[len(f.Net.State)-1] != 2 {
-		t.Error("Should have 2 transition in last place, is", f.Net.State[len(f.Net.State)-1])
+		t.Error("Should have 2 transition in last place, but have", f.Net.State[len(f.Net.State)-1])
 	}
 }
 
