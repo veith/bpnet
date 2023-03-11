@@ -1,8 +1,8 @@
 package bpnet_test
 
 import (
-	"testing"
 	"github.com/veith/bpnet"
+	"testing"
 
 	"fmt"
 	"github.com/oklog/ulid"
@@ -42,11 +42,11 @@ func TestProcess_CompleteOnce(t *testing.T) {
 
 	// last place should have n tokens
 	if f.Net.State[len(f.Net.State)-1] != 10 {
-		t.Error("Should have 10 transition in last place, is %s", f.Net.State[len(f.Net.State)-1])
+		t.Error("Should have 10 transition in last place, is", f.Net.State[len(f.Net.State)-1])
 	}
 	time.Sleep(10 * time.Millisecond)
 	// sollte nur ein mal beenden
-	if completed !=1{
+	if completed != 1 {
 		t.Error("Should only complete once, is", completed)
 	}
 }
@@ -56,7 +56,6 @@ func TestDataPointer(t *testing.T) {
 	process.InitialState = []int{10, 0, 0, 0, 0, 0, 0, 0, 0}
 	process.TransitionTypes = []int{1, 1, 1, 1, 1, 1, 1}
 	f := process.CreateFlow("veith")
-
 
 	data := map[string]interface{}{"a": 12}
 	f.Start(data)
@@ -89,10 +88,9 @@ func TestProcess_Subflow(t *testing.T) {
 	f.Start(data)
 
 	if f.Net.State[len(f.Net.State)-1] != 3 {
-		t.Error("Should have 10 transition in last place, is %s", f.Net.State[len(f.Net.State)-1])
+		t.Error("Should have 10 transition in last place, is", f.Net.State[len(f.Net.State)-1])
 	}
 }
-
 
 func TestMessage(t *testing.T) {
 	process := freshProcess()
@@ -102,9 +100,9 @@ func TestMessage(t *testing.T) {
 		{0, 0, 1, 0},
 	}
 	process.OutputMatrix = [][]int{
-		{0, 1, 0, 0,},
-		{0, 0, 1, 0,},
-		{0, 0, 0, 1,},
+		{0, 1, 0, 0},
+		{0, 0, 1, 0},
+		{0, 0, 0, 1},
 	}
 	process.InitialState = []int{2, 0, 0, 0}
 	process.TransitionTypes = []int{1, 3, 1}
@@ -135,7 +133,7 @@ func TestProcess_Auto(t *testing.T) {
 
 	// last place should have n tokens
 	if f.Net.State[len(f.Net.State)-1] != 10 {
-		t.Error("Should have 10 transition in last place, is %s", f.Net.State[len(f.Net.State)-1])
+		t.Error("Should have 10 transition in last place, is", f.Net.State[len(f.Net.State)-1])
 	}
 
 }
@@ -148,9 +146,9 @@ func TestProcess_TimedUnset(t *testing.T) {
 		{0, 0, 1, 0},
 	}
 	process.OutputMatrix = [][]int{
-		{0, 1, 0, 0,},
-		{0, 0, 1, 0,},
-		{0, 0, 0, 1,},
+		{0, 1, 0, 0},
+		{0, 0, 1, 0},
+		{0, 0, 0, 1},
 	}
 	process.InitialState = []int{2, 0, 0, 0}
 	process.TransitionTypes = []int{1, 4, 1}
@@ -168,7 +166,7 @@ func TestProcess_TimedUnset(t *testing.T) {
 		t.Error("Should fired both timers", f.Net.TokenIds)
 	}
 	if f.Net.State[len(f.Net.State)-1] != 2 {
-		t.Error("Should have 2 transition in last place, is %s", f.Net.State[len(f.Net.State)-1])
+		t.Error("Should have 2 transition in last place, is", f.Net.State[len(f.Net.State)-1])
 	}
 }
 func TestProcess_TimedFloat(t *testing.T) {
@@ -179,9 +177,9 @@ func TestProcess_TimedFloat(t *testing.T) {
 		{0, 0, 1, 0},
 	}
 	process.OutputMatrix = [][]int{
-		{0, 1, 0, 0,},
-		{0, 0, 1, 0,},
-		{0, 0, 0, 1,},
+		{0, 1, 0, 0},
+		{0, 0, 1, 0},
+		{0, 0, 0, 1},
 	}
 	process.InitialState = []int{2, 0, 0, 0}
 	process.TransitionTypes = []int{1, 4, 1}
@@ -198,7 +196,7 @@ func TestProcess_TimedFloat(t *testing.T) {
 		t.Error("Should fired both timers", f.Net.TokenIds)
 	}
 	if f.Net.State[len(f.Net.State)-1] != 2 {
-		t.Error("Should have 2 transition in last place, is %s", f.Net.State[len(f.Net.State)-1])
+		t.Error("Should have 2 transition in last place, is", f.Net.State[len(f.Net.State)-1])
 	}
 }
 func TestProcess_TimedParallel(t *testing.T) {
@@ -209,9 +207,9 @@ func TestProcess_TimedParallel(t *testing.T) {
 		{0, 0, 1, 0},
 	}
 	process.OutputMatrix = [][]int{
-		{0, 1, 0, 0,},
-		{0, 0, 1, 0,},
-		{0, 0, 0, 1,},
+		{0, 1, 0, 0},
+		{0, 0, 1, 0},
+		{0, 0, 0, 1},
 	}
 	process.InitialState = []int{2, 0, 0, 0}
 	process.TransitionTypes = []int{1, 4, 1}
@@ -228,7 +226,7 @@ func TestProcess_TimedParallel(t *testing.T) {
 		t.Error("Should fired both timers", f.Net.TokenIds)
 	}
 	if f.Net.State[len(f.Net.State)-1] != 2 {
-		t.Error("Should have 2 transition in last place, is %s", f.Net.State[len(f.Net.State)-1])
+		t.Error("Should have 2 transition in last place, is", f.Net.State[len(f.Net.State)-1])
 	}
 }
 
@@ -247,7 +245,7 @@ func TestProcess_Timed(t *testing.T) {
 
 	time.Sleep(12 * time.Millisecond)
 	if f.Net.State[len(f.Net.State)-1] != 1 {
-		t.Error("Should have 10 transition in last place, is %s", f.Net.State[len(f.Net.State)-1])
+		t.Error("Should have 10 transition in last place, is", f.Net.State[len(f.Net.State)-1])
 	}
 }
 
@@ -269,8 +267,8 @@ func TestFlow_Fire2(t *testing.T) {
 		t.Error("Sollte eine erlaubte Systemtransition haben")
 		fmt.Println(f.AvailableUserTransitions)
 	}
-	f.Fire(0,data)
-	err := f.Fire(0,data)
+	f.Fire(0, data)
+	err := f.Fire(0, data)
 
 	if err == nil {
 		t.Error("Sollte einen Fehler ausgeben, weil Transition bereits gezündet wurde")
@@ -299,7 +297,7 @@ func TestFlow_Fire(t *testing.T) {
 		t.Error("Sollte eine erlaubte Systemtransition haben")
 		fmt.Println(f.AvailableUserTransitions)
 	}
-	f.Fire(0,data)
+	f.Fire(0, data)
 
 	if len(f.AvailableUserTransitions) != 0 {
 		t.Error("Sollte keine erlaubte Systemtransition mehr haben")
@@ -384,7 +382,6 @@ func freshProcess() bpnet.Process {
 		TransitionTypes: []int{2, 1, 1, 1, 1, 1, 2},
 	}
 
-
 	return process
 }
 func freshSubProcess() bpnet.Process {
@@ -401,7 +398,6 @@ func freshSubProcess() bpnet.Process {
 		InitialState:    []int{1, 0, 0},
 		TransitionTypes: []int{1, 3, 1},
 	}
-
 
 	process.Transitions = make([]bpnet.Transition, 3)
 	process.Transitions[1].Details = map[string]interface{}{"broker": "sms"}
@@ -437,7 +433,6 @@ func OnTimerStarted(flow *bpnet.Flow, transitionIndex int) bool {
 	return true
 }
 
-
 func triggerhandle(flow *bpnet.Flow, transitionIndex int) bool {
 	fmt.Println("T")
 	return true
@@ -465,11 +460,13 @@ func OnProcessStarted(flow *bpnet.Flow, tokenID int) bool {
 	fmt.Println("START process", flow.ID, tokenID)
 	return true
 }
+
 var completed int
+
 func OnProcessCompleted(flow *bpnet.Flow, tokenID int) bool {
 	// subflow starten
 	fmt.Println("COMPLETE process", flow.ID, tokenID)
-	completed +=1
+	completed += 1
 	return true
 }
 
