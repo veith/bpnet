@@ -27,6 +27,10 @@ func init() {
 	handler.FlowInstanceLoader = loadFlowInstance
 	handler.OnSendMessage = sendMessage
 
+	handler.OnStateChanged = func(flow *bpnet.Flow) bool {
+		return true
+	}
+
 	bpnet.RegisterHandler(&handler)
 }
 

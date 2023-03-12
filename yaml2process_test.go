@@ -5,12 +5,24 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/oklog/ulid"
 	"github.com/veith/bpnet"
-	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 )
 
 var parentflow *bpnet.Flow
+
+func TestLooper(t *testing.T) {
+	process := readfile("test/looper.yaml")
+	flow := process.CreateFlow("veith")
+	d := map[string]interface{}{"counts": 1}
+	flow.Start(d)
+	// flow.Fire(0, d)
+	time.Sleep(700 * time.Millisecond)
+	if flow.ReadData()["counts"] != 6 {
+		t.Error("daten sollten aktualisiert sein. erwartet 6, erhalten", flow.ReadData()["counts"])
+	}
+}
 
 func TestFireWrongConditions(t *testing.T) {
 	process := readfile("test/sample1.yaml")
@@ -25,7 +37,7 @@ func TestFireWrongConditions(t *testing.T) {
 	}
 }
 func TestStartWithMissingFields(t *testing.T) {
-	process := readfile("test/looper.yaml")
+	process := readfile("test/msg-sys.yaml")
 
 	flow := process.CreateFlow("veith")
 	d := map[string]interface{}{}
@@ -40,7 +52,7 @@ func TestStartWithMissingFields(t *testing.T) {
 }
 
 func TestSystem(t *testing.T) {
-	process := readfile("test/looper.yaml")
+	process := readfile("test/msg-sys.yaml")
 
 	flow := process.CreateFlow("veith")
 	d := map[string]interface{}{"counts": 1}
@@ -72,6 +84,9 @@ func TestMakeProcessFromYaml(t *testing.T) {
 	handler.FlowInstanceLoader = flowloader
 	handler.ProcessDefinitionLoader = loadProcDef
 	handler.OnSystemTask = OnSystemTask
+	handler.OnStateChanged = func(flow *bpnet.Flow) bool {
+		return true
+	}
 
 	process := readfile("test/sample1.yaml")
 
@@ -93,17 +108,28 @@ func flowloader(flowID ulid.ULID) (*bpnet.Flow, error) {
 	return parentflow, nil
 }
 
-func OnSystemTask(flow *bpnet.Flow, tokenID int) bool {
-	time.AfterFunc(100, func() {
-		d := map[string]interface{}{"counts": 11}
-		flow.FireSystemTask(tokenID, d)
-	})
+func OnSystemTask(flow *bpnet.Flow, tokenID int, transitionIndex int) bool {
+
+	if flow.Process.Transitions[transitionIndex].Details["target"] == "adder" {
+		fmt.Println(flow.Net.Variables["counts"])
+		time.AfterFunc(100*time.Millisecond, func() {
+			d := map[string]interface{}{"counts": flow.Net.Variables["counts"].(int) + 1}
+			flow.FireSystemTask(tokenID, d)
+		})
+
+	} else {
+		fmt.Println(flow.Process.Transitions[transitionIndex].Details)
+		time.AfterFunc(100, func() {
+			d := map[string]interface{}{"counts": 11}
+			flow.FireSystemTask(tokenID, d)
+		})
+	}
 
 	return true
 }
 
 func readfile(filename string) bpnet.Process {
-	b, _ := ioutil.ReadFile(filename)
+	b, _ := os.ReadFile(filename)
 	// Unmarshal the YAML
 	var yamlstruct bpnet.ImportNet
 	err := yaml.Unmarshal([]byte(b), &yamlstruct)

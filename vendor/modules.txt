@@ -18,7 +18,7 @@ github.com/ghodss/yaml
 # github.com/oklog/ulid v1.3.1
 ## explicit
 github.com/oklog/ulid
-# github.com/veith/petrinet v0.2.0
+# github.com/veith/petrinet v0.3.0
 ## explicit; go 1.19
 github.com/veith/petrinet
 # gopkg.in/yaml.v2 v2.4.0

@@ -15,8 +15,6 @@ transitions:
 variables:
   - id: message
     type: string
-    transition:
-
 
 startvariables:
   - message

@@ -7,10 +7,10 @@ transitions:
       token: LLFDSD
       channel: x34s
 
-  - id: system
+  - id: systemcall
     type: system
     details:
-      api: 1234
+      target: adder
 
 variables:
   - id: counts
@@ -39,18 +39,20 @@ arcs:
     destinationId: slack
     type: pt
     weight: 1
+    condition: counts > 5
 
-  - sourceId: slack
-    destinationId: p1
-    type: tp
-    weight: 1
-
-  - sourceId: p1
-    destinationId: system
+  - sourceId: start
+    destinationId: systemcall
     type: pt
     weight: 1
 
-  - sourceId: system
+  - sourceId: slack
     destinationId: end
+    type: tp
+    weight: 1
+
+
+  - sourceId: systemcall
+    destinationId: start
     type: tp
     weight: 1

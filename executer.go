@@ -1,11 +1,11 @@
 package bpnet
 
 import (
-	"github.com/veith/petrinet"
-	"time"
-	"github.com/oklog/ulid"
-	"math/rand"
 	"errors"
+	"github.com/oklog/ulid"
+	"github.com/veith/petrinet"
+	"math/rand"
+	"time"
 )
 
 func RegisterHandler(handler *Handler) {
@@ -47,7 +47,7 @@ func (flow *Flow) Start(data map[string]interface{}) error {
 	err := flow.appendData(data, "___start")
 	if err.Len() == 0 {
 		flow.Net.Init()
-		flow.AvailableUserTransitions = flow.bpnTransitionsCheck();
+		flow.AvailableUserTransitions = flow.bpnTransitionsCheck()
 		return nil
 	}
 	return err
@@ -157,7 +157,7 @@ func (f *Flow) checkCompleted() bool {
 func (f *Flow) fire(transitionIndex int) error {
 	err := f.Net.Fire(transitionIndex)
 	if err == nil {
-		f.AvailableUserTransitions = f.bpnTransitionsCheck();
+		f.AvailableUserTransitions = f.bpnTransitionsCheck()
 		return nil
 	}
 	return err
@@ -183,7 +183,7 @@ func (f *Flow) fireWithTokenId(tokenID int) error {
 	delete(f.TransitionsInProgress, tokenID)
 
 	if err == nil {
-		f.AvailableUserTransitions = f.bpnTransitionsCheck();
+		f.AvailableUserTransitions = f.bpnTransitionsCheck()
 		return nil
 	}
 
@@ -222,7 +222,7 @@ func (f *Flow) bpnTransitionsCheck() []int {
 	for _, transition := range f.Net.EnabledTransitions {
 		// places in transition
 		for place, val := range f.Net.InputMatrix[transition] {
-			if (val > 0) {
+			if val > 0 {
 				for _, tokenID := range f.Net.TokenIds[place] {
 
 					// alle noch nicht benachrichtigten timer prüfen
@@ -233,7 +233,7 @@ func (f *Flow) bpnTransitionsCheck() []int {
 
 					// systemtask
 					if f.Process.TransitionTypes[transition] == int(SYSTEM) && !f.tokenRegistred(tokenID) {
-						if BPNet.OnSystemTask(f, tokenID) {
+						if BPNet.OnSystemTask(f, tokenID, transition) {
 							f.TransitionsInProgress[tokenID] = transition
 						}
 					}
@@ -330,7 +330,8 @@ func parseDelay(s interface{}) time.Duration {
 	}
 }
 
-//  die eingebaute max kann nicht mit int umgehen :-(
+//	die eingebaute max kann nicht mit int umgehen :-(
+//
 // max von zwei Int
 func max(a, b int) int {
 	if a < b {
@@ -360,6 +361,8 @@ const (
 )
 
 type TaskType int
+
+// Flow is a running instance of a process.
 type Flow struct {
 	ID                       ulid.ULID    `json:"id"`                // flow id
 	ProcessName              string       `json:"procname"`          // Network Name
@@ -409,6 +412,6 @@ type Handler struct {
 
 type Notify func(flow *Flow, transitionIndex int) bool
 type Change func(flow *Flow) bool
-type SystemTask func(flow *Flow, tokenID int) bool
+type SystemTask func(flow *Flow, tokenID int, transitionIndex int) bool
 type ProcessDefinitionLoader func(processName string) (*Process, error)
 type FlowInstanceLoader func(flowID ulid.ULID) (*Flow, error)

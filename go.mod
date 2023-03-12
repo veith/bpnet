@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/oklog/ulid v1.3.1
-	github.com/veith/petrinet v0.2.0
+	github.com/veith/petrinet v0.3.0
 
 )
 
